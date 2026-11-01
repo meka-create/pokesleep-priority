@@ -95,7 +95,8 @@ class UpdateMasterTests(unittest.TestCase):
               for p in previous['pokemon']]
         mons.append({'id':133,'name':'Eevee (Halloween)','sleepType':'snoozing','form':'Halloween2'})
         rows={(p['id'],m.clean(p['name']),'うとうと',i)
-              for i in range(9) for p in previous['pokemon'][:160]}
+              for i in range(9) for p in previous['pokemon'][:160]
+              if p['key']!='133:Halloween'}
         rows.add((133,'イーブイ(ハロウィン)','すやすや',0))
         master=m.assemble(mons,{'Eevee (Halloween)':'イーブイ (ハロウィン)'},rows,previous)
         new=next(p for p in master['pokemon'] if p['key']=='133:Halloween2')
