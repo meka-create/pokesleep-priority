@@ -33,7 +33,7 @@ assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cy
 assert.ok(app.includes('const tabPanels=new Map()'));
 assert.ok(app.includes('render(true,keepLeavingPanel)'));
 assert.ok(app.includes('if(newPanel)renderResults()'));
-assert.ok(app.includes('spriteBlobs.has(src)'));
+assert.ok(app.includes("spriteBlobs.get(src)"));
 assert.ok(!app.includes("main.innerHTML=state.prefs.tab"));
 
 assert.ok(app.includes('sleepDot(t.id)'));
