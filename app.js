@@ -3,10 +3,11 @@
 (() => {
   const KEYS={ratings:'gense-note-ratings-v1',overrides:'gense-note-islands-v1',prefs:'gense-note-prefs-v1',master:'gense-note-master-v1'};
   const AREAS=['ワカクサ本島','シアンの砂浜','トープ洞窟','ウノハナ雪原','ラピスラズリ湖畔','ゴールド旧発電所','アンバー渓谷','ワカクサ本島 EX','シアンの砂浜 EX'];
-  const ICONS=['🌱','🏝️','⛰️','❄️','🌿','⚡','🏜️','🌱','🏝️'];
+  // Field header imagery is hosted in the app itself, not fetched on each visit.
   const LEVELS=[{id:'star',symbol:'☆',label:'最優先'},{id:'double',symbol:'◎',label:'高優先'},{id:'circle',symbol:'○',label:'優先'},{id:'triangle',symbol:'△',label:'低優先'},{id:'cross',symbol:'×',label:'不要'}];
   const GRADE_IDS=new Set(LEVELS.map(x=>x.id));
-  const SLEEP_TYPES=[{id:'うとうと',symbol:'🌙'},{id:'すやすや',symbol:'💤'},{id:'ぐっすり',symbol:'💧'}];
+  const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
+  const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
   const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null};
   const masterSeed=window.__SEED_MASTER__;
@@ -255,21 +256,21 @@
     return true;
   });}
   function countRated(){return getPokemon().filter(p=>grade(p.key)!=='none').length}
-  function hero(){const count=countRated(),total=getPokemon().length;const isSearch=state.prefs.tab==='search';return `<div class="hero"><div><h2>${isSearch?'評価検索':'ポケモン図鑑'}</h2></div><div class="count-bubble"><strong><span id="rated-count">${count}</span><span style="font-size:14px;color:#d5e2e8"> / ${total}</span></strong><span>評価済み</span></div></div>`}
+  function updateRatedCounter(){const counter=$('#rated-count');if(counter)counter.textContent=countRated();const total=$('#total-count');if(total)total.textContent=getPokemon().length;}
   function warning(){if(state.master.areasReady)return '';const m=Object.keys(state.overrides).length;return `<div class="sync-notice">島別の出現マスターは未同期です。図鑑での評価は利用できます。${m?'手動登録した島のデータは表示できます。':''} GitHub Actionsの初回更新が成功すると自動で反映されます。 <button class="link-button" data-action="sync">更新を確認</button></div>`}
-  function sleepFilter(){return `<div class="filter-line">${chips([{id:'all',text:'すべて'},{id:'うとうと',text:'🌙 うとうと'},{id:'すやすや',text:'💤 すやすや'},{id:'ぐっすり',text:'💧 ぐっすり'}],state.prefs.sleep,'sleep')}</div>`}
-  function dexShell(){const opts=[{id:'all',text:'すべて'},{id:'star',text:'☆',grade:'star'},{id:'double',text:'◎',grade:'double'},{id:'circle',text:'○',grade:'circle'},{id:'triangle',text:'△',grade:'triangle'},{id:'cross',text:'×',grade:'cross'},{id:'none',text:'未評価'}];return `${hero()}<section class="toolbar" aria-label="図鑑絞り込み"><input class="search-input" id="search" type="search" placeholder="名前の先頭・図鑑番号で検索（ひらがなOK）" value="${htmlEscape(state.prefs.search)}" autocomplete="off">${chips(opts,state.prefs.grade,'grade')}${sleepFilter()}</section><div id="results"></div>`}
+  function sleepFilter(){return `<div class="filter-line">${chips([{id:'all',text:'すべて'},...SLEEP_TYPES.map(t=>({id:t.id,text:sleepDot(t.id)+' '+t.id}))],state.prefs.sleep,'sleep')}</div>`}
+  function dexShell(){const opts=[{id:'all',text:'すべて'},{id:'star',text:'☆',grade:'star'},{id:'double',text:'◎',grade:'double'},{id:'circle',text:'○',grade:'circle'},{id:'triangle',text:'△',grade:'triangle'},{id:'cross',text:'×',grade:'cross'},{id:'none',text:'未評価'}];return `<section class="toolbar" aria-label="図鑑絞り込み"><input class="search-input" id="search" type="search" placeholder="検索" value="${htmlEscape(state.prefs.search)}" autocomplete="off">${chips(opts,state.prefs.grade,'grade')}${sleepFilter()}</section><div id="results"></div>`}
   // Evaluation search intentionally shows all islands AND sleep types on the same page.
   // The former area/sleep selectors are retained only as legacy preference fields for
   // backwards-compatible local storage; they do not filter the evaluation overview.
   function searchGradeFilter(){
     const active=new Set(state.prefs.searchGrades);
-    const allRated=LEVELS.every(x=>active.has(x.id))&&!active.has('none');
+    const none=active.size===0;
     const all=SEARCH_GRADE_IDS.every(g=>active.has(g));
     const grades=[...LEVELS,{id:'none',symbol:'—',label:'未評価'}];
-    return `<div class="search-grade-panel"><div class="search-grade-top"><strong id="search-grade-label">表示する評価</strong><div class="search-grade-presets"><button type="button" class="grade-preset ${allRated?'active':''}" data-action="search-grade-preset" data-preset="rated" aria-pressed="${allRated}">評価済み</button><button type="button" class="grade-preset ${all?'active':''}" data-action="search-grade-preset" data-preset="all" aria-pressed="${all}">すべて</button></div></div><div class="search-grade-options" role="group" aria-labelledby="search-grade-label">${grades.map(x=>`<button type="button" class="search-grade-choice ${active.has(x.id)?'active':''}" data-action="search-grade-toggle" data-grade="${x.id}" aria-label="${x.label}（${x.symbol}）を${active.has(x.id)?'非表示にする':'表示する'}" aria-pressed="${active.has(x.id)}"><span class="search-grade-symbol">${x.symbol}</span><span class="search-grade-name">${x.id==='none'?'未評価':x.label}</span></button>`).join('')}</div></div>`;
+    return `<div class="search-grade-panel"><div class="search-grade-top"><strong id="search-grade-label">表示する評価</strong><div class="search-grade-presets"><button type="button" class="grade-preset ${none?'active':''}" data-action="search-grade-preset" data-preset="none" aria-pressed="${none}">選択解除</button><button type="button" class="grade-preset ${all?'active':''}" data-action="search-grade-preset" data-preset="all" aria-pressed="${all}">すべて</button></div></div><div class="search-grade-options" role="group" aria-labelledby="search-grade-label">${grades.map(x=>`<button type="button" class="search-grade-choice ${active.has(x.id)?'active':''}" data-action="search-grade-toggle" data-grade="${x.id}" aria-label="${x.label}（${x.symbol}）を${active.has(x.id)?'非表示にする':'表示する'}" aria-pressed="${active.has(x.id)}"><span class="search-grade-symbol">${x.symbol}</span><span class="search-grade-name">${x.id==='none'?'未評価':x.label}</span></button>`).join('')}</div></div>`;
   }
-  function searchShell(){return `${hero()}${warning()}<section class="toolbar search-toolbar" aria-label="評価検索の絞り込み"><input class="search-input" id="search" type="search" placeholder="名前の先頭・図鑑番号で検索（ひらがなOK）" value="${htmlEscape(state.prefs.search)}" autocomplete="off">${searchGradeFilter()}</section><div id="results"></div>`}
+  function searchShell(){return `${warning()}<section class="toolbar search-toolbar" aria-label="評価検索の絞り込み"><input class="search-input" id="search" type="search" placeholder="検索" value="${htmlEscape(state.prefs.search)}" autocomplete="off">${searchGradeFilter()}</section><div id="results"></div>`}
   function renderSearchResults(el,all){
     const shown=new Set(state.prefs.searchGrades);
     all=all.filter(p=>shown.has(grade(p.key)));
@@ -283,7 +284,7 @@
       const areaPokemon=byArea[i];
       const groups=[...SLEEP_TYPES];
       // Unexpected future sleep types must not disappear silently from the overview.
-      if(areaPokemon.some(p=>!SLEEP_TYPES.some(t=>t.id===p.sleep)))groups.push({id:'不明',symbol:'？'});
+      if(areaPokemon.some(p=>!SLEEP_TYPES.some(t=>t.id===p.sleep)))groups.push({id:'不明'});
       const lanes=groups.map(t=>{
         const members=areaPokemon.filter(p=>p.sleep===t.id||(t.id==='不明'&&!SLEEP_TYPES.some(s=>s.id===p.sleep)));
         const priorityRows=levels.map(level=>{
@@ -292,9 +293,9 @@
           return `<div class="priority-row" data-rank-group="${level.id}"><div class="priority-label" data-grade="${level.id}" aria-label="${level.label}"><span>${level.symbol}</span><small>${group.length}</small></div><div class="priority-mons">${group.map(compactCard).join('')}</div></div>`;
         }).join('');
         const empty=shown.size===0?'表示する評価を選択してください':state.master.areasReady?'該当するポケモンなし':'島の出現情報が未登録';
-        return `<section class="sleep-column" data-sleep-section="${t.id}"><h5 class="sleep-heading"><span>${t.symbol} ${t.id}</span><small>${members.length}匹</small></h5><div class="sleep-content">${priorityRows||`<div class="sleep-empty">${empty}</div>`}</div></section>`;
+        return `<section class="sleep-column" data-sleep-section="${t.id}"><h5 class="sleep-heading"><span class="sleep-heading-label">${sleepDot(t.id)} ${t.id}</span><small>${members.length}匹</small></h5><div class="sleep-content">${priorityRows||`<div class="sleep-empty">${empty}</div>`}</div></section>`;
       }).join('');
-      content+=`<section class="island-panel" data-area-panel="${i}" id="island-${i}"><header class="island-heading"><h4><span aria-hidden="true">${ICONS[i]}</span> ${AREAS[i]}</h4><span>${areaPokemon.length}匹</span></header><div class="sleep-board">${lanes}</div></section>`;
+      content+=`<section class="island-panel" data-area-panel="${i}" id="island-${i}"><header class="island-heading"><h4>${AREAS[i]}</h4><span>${areaPokemon.length}匹</span></header><div class="sleep-board">${lanes}</div></section>`;
     }
     el.innerHTML=content;
   }
@@ -303,7 +304,7 @@
   }else renderSearchResults(el,all);
     discoverSprites();
   }
-  function render(){const main=$('#main');main.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();for(const el of document.querySelectorAll('.nav-button')){const active=el.dataset.tab===state.prefs.tab;el.classList.toggle('active',active);el.setAttribute('aria-current',active?'page':'false')}renderResults()}
+  function render(){const main=$('#main');main.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();for(const el of document.querySelectorAll('.nav-button')){const active=el.dataset.tab===state.prefs.tab;el.classList.toggle('active',active);el.setAttribute('aria-current',active?'page':'false')}renderResults();updateRatedCounter()}
   function dialogOpen(id){const d=$(id);if(!d.open)d.showModal()}
   function dialogClose(id){const d=$(id);if(d.open)d.close()}
   // Standard icons have no src until they enter the cache-first image queue.
@@ -316,7 +317,7 @@
     enqueueSprite(img);
   }
   function selected(){return getPokemon().find(p=>p.key===state.selected)}
-  function details(){const p=selected();if(!p)return;const g=grade(p.key),islands=islandList(p),custom=Object.hasOwn(state.overrides,p.key);$('#details-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><div class="subtle">No. ${String(p.id).padStart(4,'0')}　${htmlEscape(p.sleep)}</div><button class="close-button" data-action="close-details" aria-label="閉じる">×</button></div><div class="sheet-pokemon">${iconMarkup(p)}<div><h2>${htmlEscape(p.name)}</h2><p>${islands.length?islands.map(x=>AREAS[x]).join(' / '):'出現島の情報は未設定'}</p></div></div><p class="field-label">厳選優先度を選択</p><div class="grade-options">${LEVELS.map(x=>`<button class="grade-choice ${g===x.id?'active':''}" data-action="rate" data-grade="${x.id}" aria-pressed="${g===x.id}"><span>${x.symbol}</span><span>${x.label}</span></button>`).join('')}</div><div class="sheet-actions"><button class="secondary-button" data-action="unrate">未評価に戻す</button><button class="secondary-button" data-action="upload-icon">アイコン変更</button>${state.icons.has(p.key)?'<button class="secondary-button" data-action="reset-icon">画像解除</button>':''}</div><details><summary>出現する島を手動で修正 ${custom?'（手動設定中）':''}</summary><div class="island-options">${AREAS.map((a,i)=>`<label class="island-option"><input type="checkbox" data-action="island-toggle" data-island="${i}" ${islands.includes(i)?'checked':''}> ${ICONS[i]} ${htmlEscape(a)}</label>`).join('')}</div><button class="secondary-button" data-action="reset-islands">マスターの島データに戻す</button><p class="small-note">手動で変更した島の設定は、マスターが更新されても維持されます。</p></details><p class="small-note">優先度やアップロード画像はこの端末に保存されます。端末移行には設定からバックアップしてください。</p>`;
+  function details(){const p=selected();if(!p)return;const g=grade(p.key),islands=islandList(p),custom=Object.hasOwn(state.overrides,p.key);$('#details-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><div class="subtle">No. ${String(p.id).padStart(4,'0')}　${htmlEscape(p.sleep)}</div><button class="close-button" data-action="close-details" aria-label="閉じる">×</button></div><div class="sheet-pokemon">${iconMarkup(p)}<div><h2>${htmlEscape(p.name)}</h2><p>${islands.length?islands.map(x=>AREAS[x]).join(' / '):'出現島の情報は未設定'}</p></div></div><p class="field-label">厳選優先度を選択</p><div class="grade-options">${LEVELS.map(x=>`<button class="grade-choice ${g===x.id?'active':''}" data-action="rate" data-grade="${x.id}" aria-pressed="${g===x.id}"><span>${x.symbol}</span><span>${x.label}</span></button>`).join('')}</div><div class="sheet-actions"><button class="secondary-button" data-action="unrate">未評価に戻す</button><button class="secondary-button" data-action="upload-icon">アイコン変更</button>${state.icons.has(p.key)?'<button class="secondary-button" data-action="reset-icon">画像解除</button>':''}</div><details><summary>出現する島を手動で修正 ${custom?'（手動設定中）':''}</summary><div class="island-options">${AREAS.map((a,i)=>`<label class="island-option"><input type="checkbox" data-action="island-toggle" data-island="${i}" ${islands.includes(i)?'checked':''}> ${htmlEscape(a)}</label>`).join('')}</div><button class="secondary-button" data-action="reset-islands">マスターの島データに戻す</button><p class="small-note">手動で変更した島の設定は、マスターが更新されても維持されます。</p></details><p class="small-note">優先度やアップロード画像はこの端末に保存されます。端末移行には設定からバックアップしてください。</p>`;
     if($('#details').open)activateDetailSprite();
   }
   function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・島の手動修正・登録したアイコンをJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
@@ -458,7 +459,7 @@
     if(action==='unrate'&&selected())updateGrade(state.selected,'none');
     if(action==='grade'){state.prefs.grade=b.dataset.value;save();render()}
     if(action==='search-grade-toggle'&&SEARCH_GRADE_IDS.includes(b.dataset.grade)){const chosen=new Set(state.prefs.searchGrades);if(chosen.has(b.dataset.grade))chosen.delete(b.dataset.grade);else chosen.add(b.dataset.grade);state.prefs.searchGrades=SEARCH_GRADE_IDS.filter(g=>chosen.has(g));save();render()}
-    if(action==='search-grade-preset'){if(b.dataset.preset==='all')state.prefs.searchGrades=[...SEARCH_GRADE_IDS];else if(b.dataset.preset==='rated')state.prefs.searchGrades=LEVELS.map(g=>g.id);else return;save();render()}
+    if(action==='search-grade-preset'){if(b.dataset.preset==='all')state.prefs.searchGrades=[...SEARCH_GRADE_IDS];else if(b.dataset.preset==='none')state.prefs.searchGrades=[];else return;save();render()}
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
     if(action==='upload-icon')$('#icon-input').click();
     if(action==='reset-icon'&&state.selected)await setIcon(state.selected,null);
