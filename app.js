@@ -347,7 +347,27 @@
   function switchTab(tab){if(!['dex','search'].includes(tab))return;state.prefs.tab=tab;state.prefs.search='';save();render();window.scrollTo({top:0,behavior:'instant'})}
   async function openDB(){if(!('indexedDB'in window))throw Error('IndexedDB is unavailable');if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{const req=indexedDB.open('gense-note-icons',1);req.onupgradeneeded=()=>req.result.createObjectStore('icons');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});return dbPromise}
   async function dbAction(mode,action){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction('icons',mode);const store=tx.objectStore('icons');let req;try{req=action(store)}catch(e){reject(e);return}if(req){req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)}else {tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)}})}
-  async function loadIcons(){try{const result=await dbAction('readonly',s=>s.getAllKeys());for(const k of result){const value=await dbAction('readonly',s=>s.get(k));if(typeof value==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(value))state.icons.set(k,value)}}catch(e){console.warn('Custom icon storage unavailable',e)}finally{iconsReady=true;render()}}
+  async function loadIcons(){
+    try{
+      const db=await openDB();
+      // A single IndexedDB transaction replaces one transaction per image.
+      const entries=await new Promise((resolve,reject)=>{
+        const tx=db.transaction('icons','readonly'),items=[];
+        const req=tx.objectStore('icons').openCursor();
+        req.onsuccess=()=>{
+          const cursor=req.result;
+          if(cursor){items.push([cursor.key,cursor.value]);cursor.continue();}
+        };
+        tx.oncomplete=()=>resolve(items);
+        tx.onerror=()=>reject(tx.error||Error('Icon read failed'));
+        tx.onabort=()=>reject(tx.error||Error('Icon read aborted'));
+      });
+      for(const [key,value] of entries){
+        if(typeof value==='string'&&/^data:image\/(png|jpeg|webp);base64,/.test(value))state.icons.set(key,value);
+      }
+    }catch(e){console.warn('Custom icon storage unavailable',e)}
+    finally{iconsReady=true;}
+  }
   async function setIcon(key,value){try{if(value){await dbAction('readwrite',s=>s.put(value,key));state.icons.set(key,value)}else{await dbAction('readwrite',s=>s.delete(key));state.icons.delete(key)}render();if(state.selected===key&&$('#details').open)details();toast(value?'アイコンを変更しました':'標準アイコンに戻しました')}catch(e){toast('アイコン保存に失敗しました')}}
   function imageAsDataURL(file){return new Promise((resolve,reject)=>{if(!file||file.size>8*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type))return reject(Error('PNG・JPEG・WebP、8MB以内の画像を指定してください'));const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{try{const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');const scale=Math.min(128/img.width,128/img.height);const w=img.width*scale,h=img.height*scale;ctx.clearRect(0,0,128,128);ctx.drawImage(img,(128-w)/2,(128-h)/2,w,h);const data=canvas.toDataURL('image/png');URL.revokeObjectURL(url);resolve(data)}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('画像を読み込めませんでした'))};img.src=url})}
   async function handleIconInput(file){const p=selected();if(!p)return;try{const data=await imageAsDataURL(file);await setIcon(p.key,data)}catch(e){toast(e.message||'画像処理に失敗しました')}}
@@ -429,7 +449,13 @@
   $('#restore-input').addEventListener('change',async ev=>{await restore(ev.target.files?.[0]);ev.target.value=''});
   ['#details','#settings-dialog'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target===$(id))dialogClose(id)}));
   window.addEventListener('storage',ev=>{if(ev.key===KEYS.ratings)state.ratings=fromLocal(KEYS.ratings,{});if(ev.key===KEYS.overrides)state.overrides=fromLocal(KEYS.overrides,{});render()});
-  render();loadIcons();refreshMaster(false);resolveRegionalSprites();
+  async function start(){
+    await loadIcons();
+    render();
+    refreshMaster(false);
+    resolveRegionalSprites();
+  }
+  start().catch(err=>console.warn('Initialization error',err));
   if('serviceWorker'in navigator&&location.protocol.startsWith('http')){
     navigator.serviceWorker.register('./sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{
       // Catch sprites which loaded before the first Service Worker activation.
