@@ -506,7 +506,12 @@
   function shouldCheckMaster(force=false){
     if(force)return true;
     const previous=fromLocal(MASTER_CHECK_KEY,{}),slot=masterCheckSlot();
-    return previous.slot!==slot||(!previous.ok&&Date.now()-previous.time>=30*60*1000);
+    // A delayed GitHub schedule can finish after the first 04:45 check.
+    // Recheck at most every 6h on success (30min after failure), never on
+    // every app launch; this also avoids day-long stale island snapshots.
+    const age=Date.now()-Number(previous.time||0);
+    const interval=previous.ok?6*60*60*1000:30*60*1000;
+    return previous.slot!==slot||!Number.isFinite(age)||age<0||age>=interval;
   }
   async function refreshMaster(force=false){
     if(loadingMaster||!shouldCheckMaster(force))return;
