@@ -99,7 +99,7 @@
     // Only manual icons load immediately. Remote sprites enter a visible-only,
     // rate-limited queue; their network requests are additionally governed by SW.
     const tag=custom?`<img src="${htmlEscape(custom)}" alt="" decoding="async">`
-      :src?`<img data-sprite-src="${htmlEscape(src)}" alt="" decoding="async" referrerpolicy="no-referrer">`:'';
+      :src?`<img ${spriteBlobs.has(src)?`src="${htmlEscape(spriteBlobs.get(src))}" `:''}data-sprite-src="${htmlEscape(src)}" alt="" decoding="async" referrerpolicy="no-referrer">`:'';
     // Keep a recovery label, but do not render any kana behind a working
     // (possibly transparent) image. Only show it if that image actually fails.
     const initial=htmlEscape(p.name.slice(0,1));
@@ -179,7 +179,7 @@
     },{once:true});
     img.addEventListener('load',()=>img.parentElement?.classList.remove('broken'),{once:true});
     img.dataset.spriteState='cached';
-    img.src=local;
+    if(img.src!==local)img.src=local; // Avoid decoding the same Blob URL again.
   }
   function pumpImages(){
     if(imageStartTimer||imageActive>=IMAGE_MAX_ACTIVE)return;
@@ -342,7 +342,39 @@
   }else renderSearchResults(el,all);
     discoverSprites();
   }
-  function render(){const main=$('#main');main.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();for(const el of document.querySelectorAll('.nav-button')){const active=el.dataset.tab===state.prefs.tab;el.classList.toggle('active',active);el.setAttribute('aria-current',active?'page':'false')}renderResults();updateRatedCounter()}
+  // Keep the actual decoded <img> elements when switching tabs. Rebuilding
+  // innerHTML on every tab switch detached all images and flashed placeholders.
+  // Invalidate cached panels whenever ratings, icons, or master data change.
+  const tabPanels=new Map();
+  let currentPanelTab=null;
+  function render(reusePanels=false,keepLeavingPanel=true){
+    const main=$('#main');
+    if(!reusePanels){
+      tabPanels.clear();
+      main.replaceChildren();
+    }else if(currentPanelTab){
+      if(!keepLeavingPanel)tabPanels.delete(currentPanelTab);
+      else if(main.firstElementChild)tabPanels.set(currentPanelTab,main.firstElementChild);
+      main.replaceChildren();
+    }
+    let panel=tabPanels.get(state.prefs.tab);
+    const newPanel=!panel;
+    if(!panel){
+      panel=document.createElement('div');
+      panel.dataset.tabPanel=state.prefs.tab;
+      panel.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();
+      tabPanels.set(state.prefs.tab,panel);
+    }
+    main.append(panel);
+    currentPanelTab=state.prefs.tab;
+    for(const el of document.querySelectorAll('.nav-button')){
+      const active=el.dataset.tab===state.prefs.tab;
+      el.classList.toggle('active',active);
+      el.setAttribute('aria-current',active?'page':'false');
+    }
+    if(newPanel)renderResults();
+    updateRatedCounter();
+  }
   function dialogOpen(id){const d=$(id);if(!d.open)d.showModal()}
   function dialogClose(id){const d=$(id);if(d.open)d.close()}
   // Standard icons have no src until they enter the cache-first image queue.
@@ -401,7 +433,14 @@
     }
     const counter=$('#rated-count');if(counter)counter.textContent=countRated();
   }
-  function switchTab(tab){if(!['dex','search'].includes(tab))return;state.prefs.tab=tab;state.prefs.search='';save();render();window.scrollTo({top:0,behavior:'instant'})}
+  function switchTab(tab){
+    if(!['dex','search'].includes(tab)||tab===state.prefs.tab)return;
+    // The search is reset on tab switches; never reuse a filtered panel.
+    const keepLeavingPanel=!state.prefs.search;
+    state.prefs.tab=tab;state.prefs.search='';save();
+    render(true,keepLeavingPanel);
+    window.scrollTo({top:0,behavior:'instant'});
+  }
   async function openDB(){if(!('indexedDB'in window))throw Error('IndexedDB is unavailable');if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{const req=indexedDB.open('gense-note-icons',1);req.onupgradeneeded=()=>req.result.createObjectStore('icons');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});return dbPromise}
   async function dbAction(mode,action){
     const db=await openDB();
