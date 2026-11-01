@@ -38,7 +38,24 @@
   const normalize=s=>String(s||'').normalize('NFKC').replace(/[ぁ-ゖ]/g,c=>String.fromCharCode(c.charCodeAt(0)+0x60)).normalize('NFC').replace(/[\s　]/g,'').toLocaleLowerCase('ja');
   function fromLocal(key,fallback){try{const data=JSON.parse(localStorage.getItem(key));return data===null?fallback:data}catch{return fallback}}
   function setLocal(key,value){try{localStorage.setItem(key,JSON.stringify(value));return true}catch{toast('保存容量が不足しています。バックアップを作成してください');return false}}
-  function validMaster(x){return x&&x.schema===1&&Array.isArray(x.pokemon)&&x.pokemon.length>=200&&x.pokemon.every(p=>p&&typeof p.key==='string'&&/^\d+:[A-Za-z0-9 _-]+$/.test(p.key)&&Number.isInteger(p.id)&&typeof p.name==='string'&&Array.isArray(p.islands));}
+  function validMaster(x){
+    if(!x||x.schema!==1||!Array.isArray(x.pokemon)||x.pokemon.length<200)return false;
+    if(typeof x.areasReady!=='boolean'||!Array.isArray(x.areas))return false;
+    if(x.areasReady&&(x.areas.length!==AREAS.length||x.areas.some((area,i)=>area!==AREAS[i])))return false;
+    if(typeof x.updatedAt!=='string'||!Number.isFinite(Date.parse(x.updatedAt)))return false;
+    const keys=new Set();
+    for(const p of x.pokemon){
+      if(!p||typeof p.key!=='string'||!/^(\d+):[A-Za-z0-9 _-]+$/.test(p.key)
+        ||!Number.isInteger(p.id)||p.id<1||p.id>9999
+        ||Number(p.key.split(':',1)[0])!==p.id||keys.has(p.key)
+        ||typeof p.name!=='string'||!p.name.trim()
+        ||!Array.isArray(p.islands)||p.islands.some(n=>!Number.isInteger(n)||n<0||n>=AREAS.length)
+        ||new Set(p.islands).size!==p.islands.length
+        ||!['うとうと','すやすや','ぐっすり','不明'].includes(p.sleep))return false;
+      keys.add(p.key);
+    }
+    return true;
+  }
   const last=fromLocal(KEYS.master,null);
   const savedMaster=validMaster(last)?last:masterSeed;
   // Bundled 9-island seed should immediately upgrade an older species-only
@@ -596,10 +613,24 @@
     try{
       const input=JSON.parse(await file.text());
       if(input.app!=='pokesleep-priority'||input.version!==1)throw Error('このアプリのバックアップではありません');
+      // A truncated/altered file must never silently clear ratings or all
+      // uploaded icons. Reject the entire restore before touching storage.
+      const isRecord=value=>value!==null&&typeof value==='object'&&!Array.isArray(value);
+      if(!isRecord(input.ratings)||!isRecord(input.overrides)||!isRecord(input.icons))
+        throw Error('バックアップ項目が欠けているか不正です');
+      const candidates=Object.entries(input.icons);
+      if(candidates.some(([key,value])=>
+        !/^\d+:[A-Za-z0-9 _-]+$/.test(key)||typeof value!=='string'||value.length>450000
+        ||!/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(value)))
+        throw Error('バックアップ内のアイコン情報が不正です');
+      if(Object.entries(input.ratings).some(([key,value])=>
+        !/^\d+:[A-Za-z0-9 _-]+$/.test(key)||!GRADE_IDS.has(value)))
+        throw Error('バックアップ内の評価情報が不正です');
+      if(Object.entries(input.overrides).some(([key,islands])=>
+        !/^\d+:[A-Za-z0-9 _-]+$/.test(key)||!Array.isArray(islands)
+        ||islands.some(n=>!Number.isInteger(n)||n<0||n>=AREAS.length)))
+        throw Error('バックアップ内の島設定が不正です');
       const ratings=sanitizedRatings(input.ratings),overrides=sanitizedOverrides(input.overrides);
-      const candidates=Object.entries(input.icons||{}).filter(([key,value])=>
-        /^\d+:[A-Za-z0-9 _-]+$/.test(key)&&typeof value==='string'&&value.length<=450000
-        &&/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(value));
       if(!confirm('現在の厳選優先度・手動設定をバックアップの内容に置き換えます。続けますか？'))return;
       const formerRatings=state.ratings,formerOverrides=state.overrides;
       if(!setLocal(KEYS.ratings,ratings))throw Error('評価を保存できませんでした');
