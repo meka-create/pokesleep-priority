@@ -81,6 +81,27 @@ class UpdateMasterTests(unittest.TestCase):
         self.assertEqual(by_key[missing['key']]['islands'],[4])
         self.assertEqual(by_key[event['key']]['islands'],[3])
 
+    def test_new_purple_halloween_forms_remain_distinct(self):
+        from seed import disambiguate_form_name
+        from availability import map_form
+        self.assertEqual(disambiguate_form_name('Halloween2','イーブイ (ハロウィン)'),
+                         'イーブイ (ハロウィン・紫)')
+        self.assertEqual(disambiguate_form_name('Halloween','イーブイ (ハロウィン)'),
+                         'イーブイ (ハロウィン)')
+        self.assertEqual(map_form({'id':'pikachu_halloween2'}),'Halloween2')
+        self.assertEqual(map_form({'id':'eevee_halloween_purple'}),'Halloween2')
+        previous=make_seed()
+        mons=[{'id':p['id'],'name':p['name'],'sleepType':'dozing','form':p['form']}
+              for p in previous['pokemon']]
+        mons.append({'id':133,'name':'Eevee (Halloween)','sleepType':'snoozing','form':'Halloween2'})
+        rows={(p['id'],m.clean(p['name']),'うとうと',i)
+              for i in range(9) for p in previous['pokemon'][:160]}
+        rows.add((133,'イーブイ(ハロウィン)','すやすや',0))
+        master=m.assemble(mons,{'Eevee (Halloween)':'イーブイ (ハロウィン)'},rows,previous)
+        new=next(p for p in master['pokemon'] if p['key']=='133:Halloween2')
+        self.assertIn('紫',new['name'])
+        self.assertEqual(new['islands'],[0])
+
     def test_reject_partial_master(self):
         seed=make_seed()
         mons=[{'id':x['id'],'name':x['name'],'sleepType':'dozing','form':x['form']} for x in seed['pokemon']]

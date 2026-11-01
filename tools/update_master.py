@@ -14,7 +14,7 @@ from urllib.parse import urlsplit, urlunsplit, quote
 from collections import defaultdict
 from pathlib import Path
 from bs4 import BeautifulSoup
-from seed import make_seed, REGIONAL_SPRITE_IDS
+from seed import make_seed, REGIONAL_SPRITE_IDS, disambiguate_form_name
 from availability import master_from_availability
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -138,6 +138,7 @@ def assemble(pokemon_data, translations, encounter_records, previous):
         local=prior.get(key,{})
         if key in local_ja: named=local_ja[key]
         else: named=translations.get(en,ALIASES.get(en,en))
+        named=disambiguate_form_name(form,named)
         sleep=SLEEP_EN.get(entry.get('sleepType'),sleep_by_key.get(key,local.get('sleep','不明')))
         islands=sorted(slots.get(key,set()))
         # A partial wiki scrape must never silently unmap a previously

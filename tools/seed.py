@@ -24,6 +24,21 @@ def species_key(num, name):
     return f'{num}:{form or "default"}', form
 
 
+def disambiguate_form_name(form, translated):
+    """Use an unambiguous label without changing stable user-rating keys.
+
+    Halloween2 denotes the purple-costumed edition, while the original
+    Halloween entry remains a separate selectable form. The upstream Japanese
+    translation currently gives them identical labels.
+    """
+    if form!='Halloween2':
+        return translated
+    if '(ハロウィン)' in translated:
+        return translated.replace('(ハロウィン)', '(ハロウィン・紫)')
+    if '（ハロウィン）' in translated:
+        return translated.replace('（ハロウィン）', '（ハロウィン・紫）')
+    return translated+' (ハロウィン・紫)'
+
 def make_seed():
     dozing = set(DOZING.split(',')); slumbering = set(SLUMBERING.split(','))
     species=[]

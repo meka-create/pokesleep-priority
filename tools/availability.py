@@ -2,7 +2,7 @@
 from __future__ import annotations
 from collections import defaultdict
 from embedded_islands import AREAS
-from seed import REGIONAL_SPRITE_IDS
+from seed import REGIONAL_SPRITE_IDS, disambiguate_form_name
 
 FIELD_KEYS = ('greengrass_isle','cyan_beach','taupe_hollow','snowdrop_tundra',
               'lapis_lakeside','old_gold_power_plant','amber_canyon',
@@ -21,6 +21,7 @@ def map_form(entry):
             if token in slug:return form
     if slug.startswith('toxtricity_'):
         return 'Low Key' if 'low_key' in slug else 'Amped'
+    if any(token in slug for token in ('halloween2','halloween_2','halloween2024','halloween_purple')):return 'Halloween2'
     if 'halloween' in slug:return 'Halloween'
     if 'holiday' in slug:return 'Holiday'
     if 'captain' in slug:return 'Captain'
@@ -75,7 +76,7 @@ def master_from_availability(species, translations, entries, previous):
         # Upstream incompleteness must not erase known validated appearances.
         if not islands and old.get('islands'):
             islands=old['islands']
-        name=old.get('name') or labels.get(p['name']) or p['name']
+        name=disambiguate_form_name(form,old.get('name') or labels.get(p['name']) or p['name'])
         sleep=en_sleep.get(p.get('sleepType'),old.get('sleep','不明'))
         item={'key':key,'id':p['id'],'form':p.get('form') or '',
                     'name':name,'sleep':sleep,'islands':sorted(set(islands))}

@@ -45,6 +45,16 @@ class IslandSnapshotTests(unittest.TestCase):
         self.assertEqual(map_form({'id':'ditto_mew'}),'default')
         self.assertEqual(map_form({'id':'clodsire'}),'Paldea')
 
+    def test_costume_forms_remain_distinct_after_refresh(self):
+        if '25:Halloween2' in self.by_key:
+            self.assertIn('紫',self.by_key['25:Halloween2']['name'])
+            self.assertNotEqual(self.by_key['25:Halloween2']['name'],
+                                self.by_key['25:Halloween']['name'])
+        if '133:Halloween2' in self.by_key:
+            self.assertIn('紫',self.by_key['133:Halloween2']['name'])
+            self.assertNotEqual(self.by_key['133:Halloween2']['name'],
+                                self.by_key['133:Halloween']['name'])
+
     def test_ratings_storage_independent_from_master(self):
         app=(ROOT/'app.js').read_text('utf-8')
         self.assertIn("ratings:'gense-note-ratings-v1'",app)
