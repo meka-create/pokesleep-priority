@@ -1,5 +1,5 @@
 /* Offline shell + rate-limited PokeAPI sprite cache; no personal data is cached. */
-const SHELL_CACHE='gense-note-shell-v0.1.11';
+const SHELL_CACHE='gense-note-shell-v0.1.12';
 const SPRITE_CACHE='gense-note-sprites-v1';
 const SPRITE_META='gense-note-sprite-meta-v1';
 const SPRITE_ROOT='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -8,7 +8,7 @@ const MAX_SPRITES=350;
 const MAX_CONCURRENT=3;
 const MIN_REQUEST_GAP_MS=150;
 const MAX_RETRIES=2;
-const CORE=['./','./index.html','./styles.css','./app.js','./data/seed-data.js','./data/master.json','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png','./assets/icon-header-96.png','./assets/icon-maskable-192.png','./assets/icon-maskable-512.png','./assets/favicon-32.png','./assets/favicon-48.png','./assets/apple-touch-icon.png'];
+const CORE=['./','./index.html','./styles.css','./app.js','./data/seed-data.js','./data/master.json','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png','./assets/icon-header-96.png','./assets/icon-maskable-192.png','./assets/icon-maskable-512.png','./assets/favicon-32.png','./assets/favicon-48.png','./assets/apple-touch-icon.png','./assets/field-greengrass.png','./assets/field-cyan.png','./assets/field-taupe.png','./assets/field-snowdrop.png','./assets/field-lapis.png','./assets/field-gold.png','./assets/field-amber.png'];
 
 function isSprite(url){return url.origin==='https://raw.githubusercontent.com' && url.href.startsWith(SPRITE_ROOT) && /^\d+\.png$/.test(url.pathname.split('/').pop());}
 
