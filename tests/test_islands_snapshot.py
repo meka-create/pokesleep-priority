@@ -17,8 +17,8 @@ class IslandSnapshotTests(unittest.TestCase):
         m=self.master
         self.assertTrue(m['areasReady'])
         self.assertEqual(len(m['areas']),9)
-        self.assertGreaterEqual(len(m['pokemon']),252)
-        self.assertGreaterEqual(sum(bool(p['islands']) for p in m['pokemon']),244)
+        self.assertEqual(len(m['pokemon']),245)
+        self.assertGreaterEqual(sum(bool(p['islands']) for p in m['pokemon']),235)
         self.assertEqual(set(range(9)),set(i for p in m['pokemon'] for i in p['islands']))
         js=(ROOT/'data/seed-data.js').read_text('utf-8').strip()
         self.assertTrue(js.startswith('window.__SEED_MASTER__='))
@@ -45,15 +45,15 @@ class IslandSnapshotTests(unittest.TestCase):
         self.assertEqual(map_form({'id':'ditto_mew'}),'default')
         self.assertEqual(map_form({'id':'clodsire'}),'Paldea')
 
-    def test_costume_forms_remain_distinct_after_refresh(self):
-        if '25:Halloween2' in self.by_key:
-            self.assertIn('紫',self.by_key['25:Halloween2']['name'])
-            self.assertNotEqual(self.by_key['25:Halloween2']['name'],
-                                self.by_key['25:Halloween']['name'])
-        if '133:Halloween2' in self.by_key:
-            self.assertIn('紫',self.by_key['133:Halloween2']['name'])
-            self.assertNotEqual(self.by_key['133:Halloween2']['name'],
-                                self.by_key['133:Halloween']['name'])
+    def test_game_pokedex_taxonomy_has_no_duplicate_forms(self):
+        from species_policy import EXCLUDED_KEYS, CANONICAL_NAMES
+        self.assertFalse(EXCLUDED_KEYS.intersection(self.by_key))
+        self.assertEqual(len(self.master['pokemon']),245)
+        for key,name in CANONICAL_NAMES.items():
+            self.assertEqual(self.by_key[key]['name'],name)
+        for key in ('25:Halloween','133:Halloween','37:Alola','38:Alola',
+                    '194:Paldea','849:Amped','849:Low Key','980:Paldea'):
+            self.assertIn(key,self.by_key)
 
     def test_ratings_storage_independent_from_master(self):
         app=(ROOT/'app.js').read_text('utf-8')

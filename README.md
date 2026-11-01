@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.18 – GitHub Pages
+# 厳選ノート v0.1.19 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,15 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.19 — ゲーム内図鑑245種へ統一・先祖返り対策
+
+- 2026-11-01現在のゲーム内図鑑計数に合わせ、254レコードを245種のカードへ統一。バケッチャ・パンプジンはちゅうだましゅを代表として各1カードにし、ハロウィン衣装の帽子色違いも各1カードに統合。出現フィールドのない Pikachu (Low Key) は除外。
+- 維持する内部キーは 710:Medium / 711:Medium / 25:Halloween / 133:Halloween。他の9キーは廃止し、旧キーの評価・カスタムアイコンは引き継ぎません（他の評価・アイコンは保持）。
+- 同一の除外ルールをWikiマスター更新、構造化データへのフォールバック、オフライン初期シード、ブラウザの旧ローカルマスター復元、オンライン直接新種取得へ適用。未処理の上流データが再び254件を追加する問題を防止。
+- 245種は現時点の基準値です。新種が正当に実装された場合は増加を許容します。
+- 更新前のマスターデータと9つのフィールド設定・評価の保存キーを保持。静的データ検証とクライアント回帰テストを追加しました。
+- Android実機の更新後確認と翌日のschedule定期更新は別途検証します。
 
 ## v0.1.18 — 詳細モーダルを独立した中央配置へ変更
 

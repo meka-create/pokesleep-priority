@@ -16,6 +16,7 @@ from pathlib import Path
 from bs4 import BeautifulSoup
 from seed import make_seed, REGIONAL_SPRITE_IDS, disambiguate_form_name
 from availability import master_from_availability
+from species_policy import included, name_for, normalize_records
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT/'data'/'master.json'
@@ -28,7 +29,7 @@ AREA_NAMES = ('ワカクサ本島','シアンの砂浜','トープ洞窟','ウ�
               'ワカクサ本島 EX','シアンの砂浜 EX')
 AREA_LABELS = ('ワカクサ','シアン','トープ','ウノハナ','ラピス','ゴールド','アンバー')
 SLEEP_EN = {'dozing':'うとうと','snoozing':'すやすや','slumbering':'ぐっすり'}
-ALIASES = {'Pikachu (Low Key)': 'ピカチュウ（ローキー）'}
+ALIASES = {}
 
 
 def safe_request_url(url):
@@ -117,7 +118,8 @@ def assemble(pokemon_data, translations, encounter_records, previous):
         if not isinstance(pokemon,dict) or not isinstance(pokemon.get('id'),int):continue
         num=pokemon['id'];form=pokemon.get('form') or ''
         key=f'{num}:{form or "default"}'
-        display=local_ja.get(key,translations.get(pokemon.get('name'),pokemon.get('name','')))
+        if not included(key):continue
+        display=name_for(key,local_ja.get(key,translations.get(pokemon.get('name'),pokemon.get('name',''))))
         by_number[num].append({'key':key,'name':clean(display)})
     # Matching only by dex number would merge distinct forms. Exact Japanese
     # names take priority; pumpkin sizes share one Wiki appearance record.
@@ -133,12 +135,13 @@ def assemble(pokemon_data, translations, encounter_records, previous):
         if not isinstance(entry,dict) or not isinstance(entry.get('id'),int) or not isinstance(entry.get('name'),str):continue
         num=entry['id'];en=entry['name'];form=entry.get('form') or ''
         key=f'{num}:{form or "default"}'
+        if not included(key):continue
         if key in known:raise ValueError(f'duplicate key: {key}')
         known.add(key)
         local=prior.get(key,{})
         if key in local_ja: named=local_ja[key]
         else: named=translations.get(en,ALIASES.get(en,en))
-        named=disambiguate_form_name(form,named)
+        named=name_for(key,disambiguate_form_name(form,named))
         sleep=SLEEP_EN.get(entry.get('sleepType'),sleep_by_key.get(key,local.get('sleep','不明')))
         islands=sorted(slots.get(key,set()))
         # A partial wiki scrape must never silently unmap a previously
@@ -153,9 +156,10 @@ def assemble(pokemon_data, translations, encounter_records, previous):
     # user's existing Pokémon from the built-in master. Keep it until a
     # separately verified migration explicitly retires that stable key.
     for key, item in prior.items():
-        if key not in known:
+        if key not in known and included(key):
             output.append(item)
             known.add(key)
+    output=normalize_records(output)
     output.sort(key=lambda p:(p['id'],p['key']))
     unique_with_areas=sum(bool(x['islands']) for x in output)
     coverage={i for p in output for i in p['islands']}

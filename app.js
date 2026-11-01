@@ -10,6 +10,19 @@
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
   const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null};
+  // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
+  const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
+  const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
+  function canonicalizePokemon(records){
+    const seen=new Set(),result=[];
+    for(const pokemon of records||[]){
+      if(!pokemon||EXCLUDED_MASTER_KEYS.has(pokemon.key)||seen.has(pokemon.key))continue;
+      seen.add(pokemon.key);
+      const name=CANONICAL_MASTER_NAMES[pokemon.key];
+      result.push(name&&pokemon.name!==name?{...pokemon,name}:pokemon);
+    }
+    return result;
+  }
   const masterSeed=window.__SEED_MASTER__;
   const $=(s,root=document)=>root.querySelector(s);
   const htmlEscape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -28,7 +41,7 @@
   const bundled=validMaster(masterSeed)&&masterSeed.areasReady
     &&(!base.areasReady||(Number.isFinite(bundleStamp)&&
       (!Number.isFinite(baseStamp)||bundleStamp>=baseStamp)));
-  const master= bundled?(()=>{
+  const combinedMaster= bundled?(()=>{
     const priorByKey=new Map(base.pokemon.map(p=>[p.key,p]));
     const freshKeys=new Set(masterSeed.pokemon.map(p=>p.key));
     return {
@@ -42,6 +55,7 @@
       ]
     };
   })():base;
+  const master={...combinedMaster,pokemon:canonicalizePokemon(combinedMaster.pokemon)};
   const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};
   if(!['dex','search'].includes(prefs.tab))prefs.tab='dex';
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
@@ -477,7 +491,7 @@
     const oldTime=Date.parse(old.updatedAt||''),nextTime=Date.parse(next.updatedAt||'');
     if(old.areasReady&&next.areasReady&&Number.isFinite(oldTime)&&Number.isFinite(nextTime)&&nextTime<oldTime)return 0;
     let updated=0;
-    const oldMap=new Map(old.pokemon.map(p=>[p.key,p]));const newer=next.pokemon.map(p=>{
+    const oldMap=new Map(old.pokemon.map(p=>[p.key,p]));const newer=canonicalizePokemon(next.pokemon).map(p=>{
       const prior=oldMap.get(p.key);
       if(!prior){updated++;return p}
       // A species-only seed must never erase previously validated island data.
@@ -488,7 +502,7 @@
       return p;
     });
     for(const p of old.pokemon)if(!newer.some(x=>x.key===p.key))newer.push(p); // temporary upstream omissions should not erase user entries
-    state.master={...next,pokemon:newer,areasReady:Boolean(next.areasReady||old.areasReady)};
+    state.master={...next,pokemon:canonicalizePokemon(newer),areasReady:Boolean(next.areasReady||old.areasReady)};
     if(old.areasReady&&!next.areasReady)state.master.updatedAt=old.updatedAt;
     const visibleDataChanged=Boolean(old.areasReady)!==Boolean(state.master.areasReady)
       ||JSON.stringify(old.pokemon)!==JSON.stringify(newer);
@@ -531,7 +545,7 @@
     // Island mapping is set only by a validated scheduled Wiki rebuild, not guessed.
     const lastCheck=fromLocal('gense-note-upstream-check','');
     if(force||lastCheck!==today){try{const base='https://raw.githubusercontent.com/nitoyon/pokesleep-tool/main/';const [sp,ja]=await Promise.all([fetchJSON(base+'src/data/pokemon.json'),fetchJSON(base+'src/i18n/ja/pokemons.json')]);if(!Array.isArray(sp)||!ja?.pokemons)throw Error('upstream schema');const known=new Set(getPokemon().map(p=>p.key));let inserts=0;
-      for(const p of sp){if(!Number.isInteger(p.id)||!p.name||p.arrival&&p.arrival>today)continue;const key=`${p.id}:${p.form||'default'}`;if(known.has(key))continue;const sleep={dozing:'うとうと',snoozing:'すやすや',slumbering:'ぐっすり'}[p.sleepType]||'不明';const name=ja.pokemons[p.name]||p.name;state.master.pokemon.push({key,id:p.id,name,sleep,form:p.form||'',islands:[]});known.add(key);inserts++}
+      for(const p of sp){if(!Number.isInteger(p.id)||!p.name||p.arrival&&p.arrival>today)continue;const key=`${p.id}:${p.form||'default'}`;if(EXCLUDED_MASTER_KEYS.has(key)||known.has(key))continue;const sleep={dozing:'うとうと',snoozing:'すやすや',slumbering:'ぐっすり'}[p.sleepType]||'不明';const name=ja.pokemons[p.name]||p.name;state.master.pokemon.push({key,id:p.id,name,sleep,form:p.form||'',islands:[]});known.add(key);inserts++}
       if(inserts){state.master.pokemon.sort((a,b)=>a.id-b.id||a.key.localeCompare(b.key));setLocal(KEYS.master,state.master);render();resolveRegionalSprites()}newCount+=inserts;setLocal('gense-note-upstream-check',today);
     }catch(e){errors.push('新種の直接確認に失敗')}}
     setLocal(MASTER_CHECK_KEY,{slot:checkSlot,time:Date.now(),ok:siteUpdate});

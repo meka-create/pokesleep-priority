@@ -15,7 +15,8 @@ const ctx=vm.createContext({state,KEYS:{master:'master'},JSON,Boolean,Map,Date,I
   resolveRegionalSprites:()=>{regionChecks++;},$:()=>({open:false}),settings:()=>{},
   nowJST:()=>'2026-11-01',fromLocal:()=>({})
 });
-vm.runInContext(section('  function mergeMaster(next){','  async function refreshMaster(force=false)'),ctx);
+vm.runInContext(section('  const EXCLUDED_MASTER_KEYS=','  const masterSeed=')+
+ section('  function mergeMaster(next){','  async function refreshMaster(force=false)'),ctx);
 const merge=vm.runInContext('mergeMaster',ctx);
 merge({...master,updatedAt:'2026-11-02',pokemon:master.pokemon.map(x=>({...x}))});
 assert.equal(renders,0,'unchanged master must not redraw');

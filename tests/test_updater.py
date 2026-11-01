@@ -8,7 +8,7 @@ from seed import make_seed
 class UpdateMasterTests(unittest.TestCase):
     def test_seed_has_unique_forms(self):
         p=make_seed()['pokemon']
-        self.assertEqual(len(p),252)
+        self.assertEqual(len(p),245)
         self.assertEqual(len(set(x['key'] for x in p)),252)
         self.assertEqual(next(x for x in p if x['key']=='194:Paldea')['sleep'],'うとうと')
         self.assertEqual(next(x for x in p if x['key']=='37:Alola')['sleep'],'ぐっすり')
@@ -81,27 +81,24 @@ class UpdateMasterTests(unittest.TestCase):
         self.assertEqual(by_key[missing['key']]['islands'],[4])
         self.assertEqual(by_key[event['key']]['islands'],[3])
 
-    def test_new_purple_halloween_forms_remain_distinct(self):
-        from seed import disambiguate_form_name
-        from availability import map_form
-        self.assertEqual(disambiguate_form_name('Halloween2','イーブイ (ハロウィン)'),
-                         'イーブイ (ハロウィン・紫)')
-        self.assertEqual(disambiguate_form_name('Halloween','イーブイ (ハロウィン)'),
-                         'イーブイ (ハロウィン)')
-        self.assertEqual(map_form({'id':'pikachu_halloween2'}),'Halloween2')
-        self.assertEqual(map_form({'id':'eevee_halloween_purple'}),'Halloween2')
+    def test_excluded_variants_never_return_on_wiki_update(self):
+        from species_policy import EXCLUDED_KEYS, CANONICAL_NAMES
         previous=make_seed()
-        mons=[{'id':p['id'],'name':p['name'],'sleepType':'dozing','form':p['form']}
-              for p in previous['pokemon']]
-        mons.append({'id':133,'name':'Eevee (Halloween)','sleepType':'snoozing','form':'Halloween2'})
-        rows={(p['id'],m.clean(p['name']),'うとうと',i)
-              for i in range(9) for p in previous['pokemon'][:160]
-              if p['key']!='133:Halloween'}
-        rows.add((133,'イーブイ(ハロウィン)','すやすや',0))
-        master=m.assemble(mons,{'Eevee (Halloween)':'イーブイ (ハロウィン)'},rows,previous)
-        new=next(p for p in master['pokemon'] if p['key']=='133:Halloween2')
-        self.assertIn('紫',new['name'])
-        self.assertEqual(new['islands'],[0])
+        old=make_seed()['pokemon']
+        # Simulate all nine obsolete forms being present in an older master.
+        old+=[{'key':k,'id':int(k.split(':')[0]),'name':'旧登録','form':k.split(':')[1],
+               'sleep':'すやすや','islands':[0]} for k in EXCLUDED_KEYS]
+        previous['pokemon']=old
+        mons=[{'id':p['id'],'name':p['name'],'sleepType':'dozing','form':p.get('form','')}
+              for p in old]
+        records={(p['id'],m.clean(p['name']),'うとうと',i)
+                 for i in range(9) for p in old[:170]}
+        result=m.assemble(mons,{},records,previous)
+        keys={p['key'] for p in result['pokemon']}
+        self.assertEqual(len(result['pokemon']),245)
+        self.assertFalse(keys&EXCLUDED_KEYS)
+        for key,name in CANONICAL_NAMES.items():
+            self.assertEqual(next(p for p in result['pokemon'] if p['key']==key)['name'],name)
 
     def test_reject_partial_master(self):
         seed=make_seed()

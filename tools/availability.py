@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from embedded_islands import AREAS
 from seed import REGIONAL_SPRITE_IDS, disambiguate_form_name
+from species_policy import included, name_for, normalize_records
 
 FIELD_KEYS = ('greengrass_isle','cyan_beach','taupe_hollow','snowdrop_tundra',
               'lapis_lakeside','old_gold_power_plant','amber_canyon',
@@ -68,6 +69,7 @@ def master_from_availability(species, translations, entries, previous):
     for p in species:
         if not isinstance(p,dict) or not isinstance(p.get('id'),int) or not p.get('name'):continue
         form=p.get('form') or 'default';key=f"{p['id']}:{form}"
+        if not included(key):continue
         if key in keys:raise ValueError(f'Duplicate species key: {key}')
         keys.add(key)
         old=prior.get(key,{})
@@ -76,7 +78,7 @@ def master_from_availability(species, translations, entries, previous):
         # Upstream incompleteness must not erase known validated appearances.
         if not islands and old.get('islands'):
             islands=old['islands']
-        name=disambiguate_form_name(form,old.get('name') or labels.get(p['name']) or p['name'])
+        name=name_for(key,disambiguate_form_name(form,old.get('name') or labels.get(p['name']) or p['name']))
         sleep=en_sleep.get(p.get('sleepType'),old.get('sleep','不明'))
         item={'key':key,'id':p['id'],'form':p.get('form') or '',
                     'name':name,'sleep':sleep,'islands':sorted(set(islands))}
@@ -84,7 +86,8 @@ def master_from_availability(species, translations, entries, previous):
         if isinstance(sprite_id,int) and sprite_id>0:item['spriteId']=sprite_id
         out.append(item)
     for key,p in prior.items():
-        if key not in keys:out.append(p)
+        if key not in keys and included(key):out.append(p)
+    out=normalize_records(out)
     out.sort(key=lambda p:(p['id'],p['key']))
     mapped=sum(bool(p['islands']) for p in out)
     coverage={i for p in out for i in p['islands']}

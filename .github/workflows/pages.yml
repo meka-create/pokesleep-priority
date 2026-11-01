@@ -49,6 +49,7 @@ jobs:
           node tests/test_icon_fallback.js
           node tests/test_data_integrity.js
           node tests/test_startup_master.js
+          node tests/test_species_policy.js
           node tests/test_modal_position.js
           python tools/bootstrap_fields.py
           python tools/bootstrap_icons.py
