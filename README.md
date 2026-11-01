@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.9 – GitHub Pages
+# 厳選ノート v0.1.10 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,15 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.10：起動・描画負荷の削減
+
+- 起動時の画面描画を、手動アイコン読込完了後の1回に集約しました。
+- 手動アイコンをIndexedDBの単一読み取りトランザクションで取得します。
+- 画面表示内容に変更のないマスター更新では、全画面の再描画を省略します。
+- マスター確認を日本時間04:45基準の早朝更新前・後に制限。取得失敗時は30分後に再試行。手動更新はいつでも実行可能です。
+- 検索入力120msデバウンス、画面外の島パネルの描画最適化を導入しました。
+- ユーザーの評価・手動アイコン・9島の一覧・通信制限、GitHub Actionsの毎日04:17 JSTごろの自動更新を維持します。
 
 ## v0.1.9 — ヘッダー・画像キャッシュ改善
 
