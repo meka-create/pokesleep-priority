@@ -456,12 +456,21 @@
     }catch(error){toast(`復元失敗：${error.message||'JSON形式を確認してください'}`)}
   }
   async function fetchJSON(url){const res=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(14000)});if(!res.ok)throw Error(`HTTP ${res.status}`);return res.json()}
-  function mergeMaster(next){if(!validMaster(next))return 0;const old=state.master;let updated=0;
+  function mergeMaster(next){
+    if(!validMaster(next))return 0;
+    const old=state.master;
+    // A stale Pages/Service Worker response must not downgrade local data.
+    const oldTime=Date.parse(old.updatedAt||''),nextTime=Date.parse(next.updatedAt||'');
+    if(old.areasReady&&next.areasReady&&Number.isFinite(oldTime)&&Number.isFinite(nextTime)&&nextTime<oldTime)return 0;
+    let updated=0;
     const oldMap=new Map(old.pokemon.map(p=>[p.key,p]));const newer=next.pokemon.map(p=>{
       const prior=oldMap.get(p.key);
       if(!prior){updated++;return p}
       // A species-only seed must never erase previously validated island data.
-      if(!next.areasReady&&old.areasReady)return {...p,islands:prior.islands};
+      if(old.areasReady&&(!next.areasReady||
+        (!p.islands?.length&&prior.islands?.length))){
+        return {...p,islands:prior.islands};
+      }
       return p;
     });
     for(const p of old.pokemon)if(!newer.some(x=>x.key===p.key))newer.push(p); // temporary upstream omissions should not erase user entries
