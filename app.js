@@ -255,7 +255,7 @@
     return true;
   });}
   function countRated(){return getPokemon().filter(p=>grade(p.key)!=='none').length}
-  function hero(){const count=countRated(),total=getPokemon().length;const isSearch=state.prefs.tab==='search';return `<div class="hero"><div><h2>${isSearch?'評価検索':'ポケモン図鑑'}</h2><div class="subtle">${isSearch?'島ごと・優先度ごとに厳選対象を確認':'評価をタップしてすぐに記録'}</div></div><div class="count-bubble"><strong><span id="rated-count">${count}</span><span style="font-size:14px;color:#d5e2e8"> / ${total}</span></strong><span>評価済み</span></div></div>`}
+  function hero(){const count=countRated(),total=getPokemon().length;const isSearch=state.prefs.tab==='search';return `<div class="hero"><div><h2>${isSearch?'評価検索':'ポケモン図鑑'}</h2></div><div class="count-bubble"><strong><span id="rated-count">${count}</span><span style="font-size:14px;color:#d5e2e8"> / ${total}</span></strong><span>評価済み</span></div></div>`}
   function warning(){if(state.master.areasReady)return '';const m=Object.keys(state.overrides).length;return `<div class="sync-notice">島別の出現マスターは未同期です。図鑑での評価は利用できます。${m?'手動登録した島のデータは表示できます。':''} GitHub Actionsの初回更新が成功すると自動で反映されます。 <button class="link-button" data-action="sync">更新を確認</button></div>`}
   function sleepFilter(){return `<div class="filter-line">${chips([{id:'all',text:'すべて'},{id:'うとうと',text:'🌙 うとうと'},{id:'すやすや',text:'💤 すやすや'},{id:'ぐっすり',text:'💧 ぐっすり'}],state.prefs.sleep,'sleep')}</div>`}
   function dexShell(){const opts=[{id:'all',text:'すべて'},{id:'star',text:'☆',grade:'star'},{id:'double',text:'◎',grade:'double'},{id:'circle',text:'○',grade:'circle'},{id:'triangle',text:'△',grade:'triangle'},{id:'cross',text:'×',grade:'cross'},{id:'none',text:'未評価'}];return `${hero()}<section class="toolbar" aria-label="図鑑絞り込み"><input class="search-input" id="search" type="search" placeholder="名前の先頭・図鑑番号で検索（ひらがなOK）" value="${htmlEscape(state.prefs.search)}" autocomplete="off">${chips(opts,state.prefs.grade,'grade')}${sleepFilter()}</section><div id="results"></div>`}
@@ -306,9 +306,18 @@
   function render(){const main=$('#main');main.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();for(const el of document.querySelectorAll('.nav-button')){const active=el.dataset.tab===state.prefs.tab;el.classList.toggle('active',active);el.setAttribute('aria-current',active?'page':'false')}renderResults()}
   function dialogOpen(id){const d=$(id);if(!d.open)d.showModal()}
   function dialogClose(id){const d=$(id);if(d.open)d.close()}
+  // Standard icons have no src until they enter the cache-first image queue.
+  // A closed <dialog> is not visible to IntersectionObserver; start loading
+  // explicitly after showModal(), including when the open modal is refreshed.
+  function activateDetailSprite(){
+    const img=$('#details-body img[data-sprite-src]');
+    if(!img)return; // Custom uploaded images already have a local src.
+    if(spriteObserver)spriteObserver.unobserve(img);
+    enqueueSprite(img);
+  }
   function selected(){return getPokemon().find(p=>p.key===state.selected)}
   function details(){const p=selected();if(!p)return;const g=grade(p.key),islands=islandList(p),custom=Object.hasOwn(state.overrides,p.key);$('#details-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><div class="subtle">No. ${String(p.id).padStart(4,'0')}　${htmlEscape(p.sleep)}</div><button class="close-button" data-action="close-details" aria-label="閉じる">×</button></div><div class="sheet-pokemon">${iconMarkup(p)}<div><h2>${htmlEscape(p.name)}</h2><p>${islands.length?islands.map(x=>AREAS[x]).join(' / '):'出現島の情報は未設定'}</p></div></div><p class="field-label">厳選優先度を選択</p><div class="grade-options">${LEVELS.map(x=>`<button class="grade-choice ${g===x.id?'active':''}" data-action="rate" data-grade="${x.id}" aria-pressed="${g===x.id}"><span>${x.symbol}</span><span>${x.label}</span></button>`).join('')}</div><div class="sheet-actions"><button class="secondary-button" data-action="unrate">未評価に戻す</button><button class="secondary-button" data-action="upload-icon">アイコン変更</button>${state.icons.has(p.key)?'<button class="secondary-button" data-action="reset-icon">画像解除</button>':''}</div><details><summary>出現する島を手動で修正 ${custom?'（手動設定中）':''}</summary><div class="island-options">${AREAS.map((a,i)=>`<label class="island-option"><input type="checkbox" data-action="island-toggle" data-island="${i}" ${islands.includes(i)?'checked':''}> ${ICONS[i]} ${htmlEscape(a)}</label>`).join('')}</div><button class="secondary-button" data-action="reset-islands">マスターの島データに戻す</button><p class="small-note">手動で変更した島の設定は、マスターが更新されても維持されます。</p></details><p class="small-note">優先度やアップロード画像はこの端末に保存されます。端末移行には設定からバックアップしてください。</p>`;
-    discoverSprites();
+    if($('#details').open)activateDetailSprite();
   }
   function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・島の手動修正・登録したアイコンをJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
   function updateGrade(k,g){if(g==='none')delete state.ratings[k];else state.ratings[k]=g;save();render();dialogClose('#details');toast(g==='none'?'未評価に戻しました':`厳選優先度を ${gradeInfo(g).symbol} に変更しました`)}
@@ -440,7 +449,7 @@
   document.addEventListener('click',async ev=>{
     const b=ev.target.closest('[data-action]');if(!b||b.type==='checkbox')return;const action=b.dataset.action;
     if(action==='tab')switchTab(b.dataset.tab);
-    if(action==='pokemon'){state.selected=b.dataset.key;details();dialogOpen('#details')}
+    if(action==='pokemon'){state.selected=b.dataset.key;details();dialogOpen('#details');activateDetailSprite()}
     if(action==='quick-rate')quickRate(b)
     if(action==='settings'){settings();dialogOpen('#settings-dialog')}
     if(action==='close-details')dialogClose('#details');

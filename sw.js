@@ -1,5 +1,5 @@
 /* Offline shell + rate-limited PokeAPI sprite cache; no personal data is cached. */
-const SHELL_CACHE='gense-note-shell-v0.1.10';
+const SHELL_CACHE='gense-note-shell-v0.1.11';
 const SPRITE_CACHE='gense-note-sprites-v1';
 const SPRITE_META='gense-note-sprite-meta-v1';
 const SPRITE_ROOT='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';

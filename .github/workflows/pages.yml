@@ -41,6 +41,7 @@ jobs:
           node tests/test_sprite_cache.js
           node tests/test_client_sprite_cache.js
           node tests/test_startup_performance.js
+          node tests/test_details_modal_sprite.js
           python tools/bootstrap_icons.py
 
       - name: Refresh Pokémon master

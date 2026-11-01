@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.10 – GitHub Pages
+# 厳選ノート v0.1.11 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,13 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.11 — 詳細モーダルのアイコン表示修正
+
+- 閉じた状態の詳細モーダルでは、IntersectionObserverに画像表示を依存させず、モーダル表示直後にキャッシュ優先の画像読み込みを開始します。
+- モーダル内で画像を変更・解除した場合も表示を更新。手動画像は端末から直接表示します。
+- 「評価をタップしてすぐに記録」「島ごと・優先度ごとに厳選対象を確認」の説明文を削除します。
+- 標準画像のローカルキャッシュ、最大3件・150msの通信制限、評価・画像・島設定、マスターの午前04:17 JST定期更新は維持します。
 
 ## v0.1.10：起動・描画負荷の削減
 
