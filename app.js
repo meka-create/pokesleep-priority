@@ -799,7 +799,17 @@
       if(id)urls.add(pngIcon(id));
       if(urls.size>=14)break;
     }
-    await Promise.all([...urls].map(url=>cachedSpriteBlobURL(url)));
+    const locallyCached=await Promise.all([...urls].map(url=>cachedSpriteBlobURL(url)));
+    // Decode cached images off-DOM so the browser does not paint empty boxes
+    // before their first on-screen decode. Keep this bounded for launch speed.
+    if(typeof Image==='function'){
+      const decode=Promise.all(locallyCached.filter(Boolean).map(async src=>{
+        const image=new Image();
+        image.src=src;
+        if(typeof image.decode==='function')await image.decode().catch(()=>{});
+      }));
+      await Promise.race([decode,new Promise(resolve=>setTimeout(resolve,250))]);
+    }
   }
   async function start(){
     await loadIcons();
