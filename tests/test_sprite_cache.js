@@ -50,6 +50,16 @@ function good(){return new Response('PNG',{status:200,headers:{'content-type':'i
   off=true;
   assert.equal((await w.fire('fetch',sprite(10253)).response).status,200);
 
+  // Cached images are refreshed only after their 30-day TTL.
+  off=false;
+  const priorCalls=calls;
+  await w.fire('message',{type:'REVALIDATE_SPRITE',url:SPR+'10103.png'}).done();
+  assert.equal(calls,priorCalls,'fresh cache must avoid extra downloads');
+  const meta=await w.caches.open('gense-note-sprite-meta-v1');
+  await meta.put(sprite(10103),new Response(String(Date.now()-31*24*60*60*1000)));
+  await w.fire('message',{type:'REVALIDATE_SPRITE',url:SPR+'10103.png'}).done();
+  assert.equal(calls,priorCalls+1,'stale cache should revalidate exactly once');
+
   // 2. Burst requests: <=3 concurrent, >=150ms apart, duplicate URLs fetched once.
   const started=[];let active=0,maxActive=0;
   const b=worker(async req=>{

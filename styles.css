@@ -6,7 +6,7 @@ button,input,select {font:inherit}
 button {color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px solid var(--accent);outline-offset:3px}
 .shell {max-width:900px;min-height:100dvh;margin:0 auto;position:relative;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
-.app-header {display:flex;align-items:center;gap:12px;height:77px;padding:12px 18px;border-bottom:1px solid #2b3d52;position:sticky;top:0;z-index:5;background:#111b2af2;backdrop-filter:blur(14px)}
+.app-header {display:flex;align-items:center;gap:12px;height:77px;padding:12px 18px;border-bottom:1px solid #2b3d52;background:#111b2a}
 .brandmark {width:48px;height:48px;display:grid;place-items:center;flex:none;border-radius:15px;overflow:hidden}
 .brandmark img {display:block;width:100%;height:100%;object-fit:contain}
 .brandtext {flex:1;line-height:1.15}.brandtext h1 {font-size:21px;margin:4px 0 0;letter-spacing:.04em}.eyebrow {font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--accent)}
@@ -35,7 +35,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .search-toolbar .search-input {margin-bottom:0}
 .search-toolbar .switch-line {padding-top:12px}
 .overview-heading {margin:18px 3px 12px}
-.island-panel {background:#192838;border:1px solid var(--border);border-radius:17px;margin:0 0 16px;overflow:hidden;scroll-margin-top:88px}
+.island-panel {background:#192838;border:1px solid var(--border);border-radius:17px;margin:0 0 16px;overflow:hidden;scroll-margin-top:12px}
 .island-heading {background:#24364b;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border-bottom:1px solid var(--border)}
 .island-heading h4 {font-size:15px;line-height:1.3;margin:0;font-weight:800}
 .island-heading>span {font-size:11px;color:#b6c6d6;background:#344a5e;border-radius:20px;padding:4px 9px;white-space:nowrap}

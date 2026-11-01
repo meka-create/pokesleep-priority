@@ -84,9 +84,63 @@
       if(spriteObserver)spriteObserver.observe(img);else enqueueSprite(img);
     }
   }
-  function enqueueSprite(img){
-    if(img.dataset.spriteState||!img.isConnected)return;
+  // Display successfully cached sprites directly from local CacheStorage.
+  // Only cache misses enter the rate-limited remote queue.
+  const SPRITE_CACHE='gense-note-sprites-v1',SPRITE_META='gense-note-sprite-meta-v1';
+  const SPRITE_TTL_MS=30*24*60*60*1000;
+  const spriteBlobs=new Map(),spriteBlobPending=new Map(),spriteRevalidations=new Set();
+  async function checkSpriteFreshness(url){
+    if(spriteRevalidations.has(url)||!('serviceWorker'in navigator))return;
+    try{
+      const meta=await caches.open(SPRITE_META),record=await meta.match(url);
+      const stored=record?Number(await record.text()):NaN;
+      if(Number.isFinite(stored)&&Date.now()-stored<SPRITE_TTL_MS)return;
+      spriteRevalidations.add(url);
+      const reg=await navigator.serviceWorker.ready;
+      (navigator.serviceWorker.controller||reg.active)?.postMessage({type:'REVALIDATE_SPRITE',url});
+    }catch{}
+  }
+  async function cachedSpriteBlobURL(url){
+    if(spriteBlobs.has(url))return spriteBlobs.get(url);
+    if(spriteBlobPending.has(url))return spriteBlobPending.get(url);
+    if(!('caches'in window)||typeof URL.createObjectURL!=='function')return null;
+    const task=(async()=>{
+      const cache=await caches.open(SPRITE_CACHE),hit=await cache.match(url);
+      if(!hit||!hit.ok)return null;
+      const blob=await hit.blob();
+      if(!blob.size||!blob.type.startsWith('image/'))return null;
+      const local=URL.createObjectURL(blob);
+      spriteBlobs.set(url,local);
+      checkSpriteFreshness(url);
+      return local;
+    })().catch(()=>null).finally(()=>spriteBlobPending.delete(url));
+    spriteBlobPending.set(url,task);
+    return task;
+  }
+  function queueRemoteSprite(img){
+    if(!img.isConnected)return;
     img.dataset.spriteState='queued';imageWaiting.push(img);pumpImages();
+  }
+  async function enqueueSprite(img){
+    if(img.dataset.spriteState||!img.isConnected)return;
+    img.dataset.spriteState='checking';
+    const url=img.dataset.spriteSrc,local=await cachedSpriteBlobURL(url);
+    if(!img.isConnected)return;
+    if(!local){queueRemoteSprite(img);return;}
+    img.addEventListener('error',()=>{
+      spriteBlobs.delete(url);
+      URL.revokeObjectURL(local);
+      (async()=>{
+        try{
+          await (await caches.open(SPRITE_CACHE)).delete(url);
+          await (await caches.open(SPRITE_META)).delete(url);
+        }catch{}
+        queueRemoteSprite(img);
+      })();
+    },{once:true});
+    img.addEventListener('load',()=>img.parentElement?.classList.remove('broken'),{once:true});
+    img.dataset.spriteState='cached';
+    img.src=local;
   }
   function pumpImages(){
     if(imageStartTimer||imageActive>=IMAGE_MAX_ACTIVE)return;

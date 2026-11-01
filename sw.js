@@ -1,5 +1,5 @@
 /* Offline shell + rate-limited PokeAPI sprite cache; no personal data is cached. */
-const SHELL_CACHE='gense-note-shell-v0.1.8';
+const SHELL_CACHE='gense-note-shell-v0.1.9';
 const SPRITE_CACHE='gense-note-sprites-v1';
 const SPRITE_META='gense-note-sprite-meta-v1';
 const SPRITE_ROOT='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -148,14 +148,17 @@ self.addEventListener('fetch',event=>{
 // Older clients that loaded an image before SW control may request a later
 // cache fill. This goes through exactly the same rate-limited, deduped path.
 self.addEventListener('message',event=>{
-  if(event.data?.type!=='CACHE_SPRITE'||typeof event.data.url!=='string')return;
+  const type=event.data?.type;
+  if(!['CACHE_SPRITE','REVALIDATE_SPRITE'].includes(type)||typeof event.data.url!=='string')return;
   let url;
   try{url=new URL(event.data.url)}catch{return}
   if(!isSprite(url))return;
   event.waitUntil((async()=>{
     const req=new Request(url.href,{mode:'no-cors',credentials:'omit'});
     const cache=await caches.open(SPRITE_CACHE);
-    if(await cache.match(req))return;
+    const hit=await cache.match(req);
+    if(type==='CACHE_SPRITE'&&hit)return;
+    if(type==='REVALIDATE_SPRITE'&&(!hit||await spriteAge(req)<SPRITE_TTL_MS))return;
     try{await refreshSprite(req)}catch{}
   })());
 });
