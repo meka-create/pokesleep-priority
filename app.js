@@ -820,7 +820,12 @@
   }
   start().catch(err=>console.warn('Initialization error',err));
   if('serviceWorker'in navigator&&location.protocol.startsWith('http')){
-    navigator.serviceWorker.register('./sw.js').then(()=>navigator.serviceWorker.ready).then(()=>{
+    navigator.serviceWorker.register('./sw.js',{updateViaCache:'none'}).then(reg=>{
+      // Do not defer CSS corrections behind an old cached SW script.
+      // Ratings and uploaded icons are outside CacheStorage and untouched.
+      reg.update().catch(()=>{});
+      return navigator.serviceWorker.ready;
+    }).then(()=>{
       // Catch sprites which loaded before the first Service Worker activation.
       document.querySelectorAll('.pokemon-icon img').forEach(img=>{
         if(img.complete&&img.naturalWidth>0)saveLoadedSprite(img);

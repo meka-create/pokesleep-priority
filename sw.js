@@ -1,5 +1,5 @@
 /* Offline shell + rate-limited PokeAPI sprite cache; no personal data is cached. */
-const SHELL_CACHE='gense-note-shell-v0.1.24';
+const SHELL_CACHE='gense-note-shell-v0.1.25';
 const SPRITE_CACHE='gense-note-sprites-v1';
 const SPRITE_META='gense-note-sprite-meta-v1';
 const SPRITE_ROOT='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -137,6 +137,27 @@ self.addEventListener('fetch',event=>{
       if(res.ok){const copy=res.clone();event.waitUntil(caches.open(SHELL_CACHE).then(cache=>cache.put('./data/master.json',copy)))}
       return res;
     }).catch(()=>caches.match('./data/master.json')));
+    return;
+  }
+  // Navigation and CSS must be network-first. The former cache-first rule
+  // (especially ignoreSearch:true) could serve an old field crop indefinitely,
+  // even after users cleared the HTTP browser cache.
+  const isDocument=req.mode==='navigate'||url.pathname.endsWith('/index.html');
+  const isCSS=url.pathname.endsWith('/styles.css');
+  if(isDocument||isCSS){
+    const cacheKey=isCSS?'./styles.css':'./index.html';
+    event.respondWith((async()=>{
+      try{
+        const response=await fetch(req,{cache:'no-store'});
+        if(!response.ok)throw Error('Site shell HTTP '+response.status);
+        const copy=response.clone();
+        event.waitUntil(caches.open(SHELL_CACHE).then(cache=>cache.put(cacheKey,copy)).catch(()=>{}));
+        return response;
+      }catch{
+        // Offline PWA still opens with its last successfully cached shell.
+        return await caches.match(cacheKey,{ignoreSearch:true})||Response.error();
+      }
+    })());
     return;
   }
   event.respondWith(caches.match(req,{ignoreSearch:true}).then(hit=>hit||fetch(req).then(res=>{
