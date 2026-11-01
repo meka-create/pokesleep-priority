@@ -100,6 +100,28 @@ class UpdateMasterTests(unittest.TestCase):
         for key,name in CANONICAL_NAMES.items():
             self.assertEqual(next(p for p in result['pokemon'] if p['key']==key)['name'],name)
 
+    def test_fallback_also_drops_obsolete_form_keys(self):
+        import json
+        from availability import master_from_availability, FIELD_KEYS
+        from species_policy import EXCLUDED_KEYS
+        root=Path(__file__).resolve().parents[1]
+        previous=json.loads((root/'data/master.json').read_text('utf-8'))
+        legacy=[{'key':key,'id':int(key.split(':')[0]),'name':'旧登録',
+                 'form':key.split(':')[1],'sleep':'すやすや','islands':[0]}
+                for key in sorted(EXCLUDED_KEYS)]
+        previous['pokemon']+=legacy
+        species=[{'id':p['id'],'name':p['name'],'form':p.get('form') or '',
+                  'sleepType':'snoozing'} for p in previous['pokemon']]
+        rows=[{'id':'fallback_fixture','pokedex_number':str(p['id']),
+               'availability':{'1_star':list(FIELD_KEYS)}}
+              for p in previous['pokemon']]
+        result=master_from_availability(species,{},rows,previous)
+        keys={p['key'] for p in result['pokemon']}
+        self.assertEqual(len(result['pokemon']),245)
+        self.assertFalse(EXCLUDED_KEYS.intersection(keys))
+        self.assertEqual(next(p for p in result['pokemon'] if p['key']=='710:Medium')['name'],'バケッチャ')
+        self.assertEqual(next(p for p in result['pokemon'] if p['key']=='711:Medium')['name'],'パンプジン')
+
     def test_reject_partial_master(self):
         seed=make_seed()
         mons=[{'id':x['id'],'name':x['name'],'sleepType':'dozing','form':x['form']} for x in seed['pokemon']]
