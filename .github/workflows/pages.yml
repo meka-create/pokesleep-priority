@@ -32,6 +32,9 @@ jobs:
       - name: Install pinned icon assets
         run: python tools/bootstrap_icons.py
 
+      - name: Install field artwork as first-party PNG assets
+        run: python tools/bootstrap_fields.py
+
       - name: Validate code
         run: |
           python -m pip install beautifulsoup4==4.13.4
@@ -42,6 +45,8 @@ jobs:
           node tests/test_client_sprite_cache.js
           node tests/test_startup_performance.js
           node tests/test_details_modal_sprite.js
+          node tests/test_ui_refresh.js
+          python tools/bootstrap_fields.py
           python tools/bootstrap_icons.py
 
       - name: Refresh Pokémon master
