@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Install first-party Pokémon Sleep field artwork once; committed PNGs avoid repeat visits.
+"""Install validated offline field backgrounds (PNG and JPEG) once.
 
 Artwork URLs are stable reference sources rather than runtime image requests.
 """
@@ -28,7 +28,7 @@ PNG_SIGNATURE=b"\x89PNG\r\n\x1a\n"
 
 def valid(data:bytes, name:str)->bool:
     if not (5000<len(data)<4_000_000):return False
-    if name.endswith(".jpg"):return data.startswith(b"\\xff\\xd8\\xff") and data.endswith(b"\\xff\\xd9")
+    if name.endswith(".jpg"):return data.startswith(bytes.fromhex("ffd8ff")) and data.endswith(bytes.fromhex("ffd9"))
     return data.startswith(PNG_SIGNATURE)
 
 def install():
