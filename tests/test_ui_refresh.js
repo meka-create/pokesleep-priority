@@ -20,12 +20,24 @@ for(const [name,color] of [['うとうと','#f5ca45'],['すやすや','#8fd8f5']
  assert.ok(css.includes('data-sleep="'+name+'"]{background:'+color));
 }
 assert.ok(css.includes('height:54px;min-height:54px'));
-for(const s of ['greengrass','cyan','taupe','snowdrop','lapis','gold','amber']){
+for(const s of ['greengrass','cyan','taupe','snowdrop','lapis','gold']){
  assert.ok(css.includes('field-'+s+'.png'),s+' missing from CSS');
  assert.ok(sw.includes('field-'+s+'.png'),s+' missing from precache');
 }
+for(const landscape of ['amber-landscape','greengrass-ex','cyan-ex']){
+ assert.ok(css.includes('field-'+landscape+'.jpg'),landscape+' missing from CSS');
+ assert.ok(sw.includes('field-'+landscape+'.jpg'),landscape+' missing from precache');
+}
+assert.ok(css.includes('data-area-panel="7"]{--field-art:url(\'./assets/field-greengrass-ex.jpg\')'));
+assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cyan-ex.jpg\')'));
+assert.ok(app.includes('const tabPanels=new Map()'));
+assert.ok(app.includes('render(true,keepLeavingPanel)'));
+assert.ok(app.includes('if(newPanel)renderResults()'));
+assert.ok(app.includes("spriteBlobs.get(src)"));
+assert.ok(!app.includes("main.innerHTML=state.prefs.tab"));
+
 assert.ok(app.includes('sleepDot(t.id)'));
 assert.ok(app.includes('class="island-heading"><h4>'+ '$'+'{AREAS[i]}</h4>'));
 assert.ok(flow.includes("cron: '17 19 * * *'"));
 assert.ok(flow.includes('bootstrap_fields.py'));
-console.log('PASS: compact header; rated counter; clear presets; search placeholders; sleep type colors; 7 image assets; original 54px band; offline precache');
+console.log('PASS: compact header; rated counter; clear presets; search placeholders; sleep type colors; 6 normal images + 3 distinct field landscapes; original 54px band; offline precache');

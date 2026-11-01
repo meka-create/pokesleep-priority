@@ -96,7 +96,7 @@ jobs:
           mkdir -p .pages-public/assets .pages-public/data
           cp index.html app.js styles.css manifest.webmanifest sw.js .pages-public/
           : > .pages-public/.nojekyll
-          cp assets/*.png .pages-public/assets/
+          cp assets/*.png assets/*.jpg .pages-public/assets/
           cp data/master.json data/seed-data.js .pages-public/data/
 
       - name: Configure Pages
