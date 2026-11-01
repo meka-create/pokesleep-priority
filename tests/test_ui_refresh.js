@@ -30,6 +30,12 @@ for(const landscape of ['amber-landscape','greengrass-ex','cyan-ex']){
 }
 assert.ok(css.includes('data-area-panel="7"]{--field-art:url(\'./assets/field-greengrass-ex.jpg\')'));
 assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cyan-ex.jpg\')'));
+assert.ok(html.includes('href="./styles.css?v=0.1.25"'),"CSS must be versioned against stale PWA cache");
+assert.ok(sw.includes("const isDocument=req.mode==='navigate'"),"navigation must bypass stale HTML cache");
+assert.ok(sw.includes("const isCSS=url.pathname.endsWith('/styles.css')"),"CSS must refresh even with installed PWA");
+assert.ok(sw.includes("fetch(req,{cache:'no-store'})"),"network-first shell must bypass HTTP cache");
+assert.ok(sw.includes("caches.match(cacheKey,{ignoreSearch:true})"),"shell remains available offline");
+assert.ok(app.includes("register('./sw.js',{updateViaCache:'none'})"),"app should check updated worker");
 assert.ok(css.includes('background-position:center,center 48%'),"all ordinary islands share their original crop");
 assert.ok(!css.includes('.island-panel[data-area-panel="1"] .island-heading{background-position'),"Cyan Beach should use shared crop, not a one-off override");
 assert.ok(!css.includes('.island-panel[data-area-panel="8"] .island-heading{background-position'),"EX must remain independent");
