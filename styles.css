@@ -149,3 +149,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 
 /* Keep the kana fallback ONLY while no working Pokémon image is displayed. */
 .pokemon-icon.icon-ready:not(.broken) .fallback{display:none}
+
+/* Fallback is allowed only when there is no working image. */
+.pokemon-icon:not(.broken) .fallback{display:none}
+.pokemon-icon.broken .fallback{display:flex}

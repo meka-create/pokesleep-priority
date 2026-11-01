@@ -65,7 +65,10 @@
     // rate-limited queue; their network requests are additionally governed by SW.
     const tag=custom?`<img src="${htmlEscape(custom)}" alt="" decoding="async">`
       :src?`<img data-sprite-src="${htmlEscape(src)}" alt="" decoding="async" referrerpolicy="no-referrer">`:'';
-    return `<div class="pokemon-icon${src?'':' broken'}">${tag}<div class="fallback" aria-hidden="true">${htmlEscape(p.name.slice(0,1))}</div></div>`;
+    // Keep a recovery label, but do not render any kana behind a working
+    // (possibly transparent) image. Only show it if that image actually fails.
+    const initial=htmlEscape(p.name.slice(0,1));
+    return `<div class="pokemon-icon${src?'':' broken'}">${tag}<div class="fallback" data-fallback="${initial}" aria-hidden="true"${src?' style="display:none"':''}>${src?'':initial}</div></div>`;
   }
   // The app queue also protects a first visit before Service Worker control.
   // Requests start >=150ms apart, and at most three visible image elements load
@@ -160,7 +163,7 @@
         clearTimeout(watchdog);imageActive=Math.max(0,imageActive-1);pumpImages();
       };
       const watchdog=setTimeout(()=>{
-        img.parentElement?.classList.add('broken');finish();
+        setIconDisplayState(img,false);finish();
       },20000);
       img.addEventListener('load',finish,{once:true});
       img.addEventListener('error',finish,{once:true});
@@ -482,20 +485,26 @@
       searchRenderTimer=setTimeout(()=>{searchRenderTimer=null;renderResults()},120);
     }
   });
-  document.addEventListener('error',ev=>{
-    if(!(ev.target instanceof HTMLImageElement))return;
-    const container=ev.target.closest('.pokemon-icon');
+  function setIconDisplayState(img,loaded){
+    const container=img.closest('.pokemon-icon');
     if(!container)return;
-    container.classList.remove('icon-ready');
-    container.classList.add('broken');
+    container.classList.remove(loaded?'broken':'icon-ready');
+    container.classList.add(loaded?'icon-ready':'broken');
+    const fallback=container.querySelector?.('.fallback');
+    if(fallback){
+      // Clear the actual text, not just its CSS visibility. A loaded icon
+      // can never overlap its own placeholder, even with transparent PNGs.
+      fallback.textContent=loaded?'':fallback.dataset.fallback||'';
+      fallback.style.display=loaded?'none':'flex';
+    }
+  }
+  document.addEventListener('error',ev=>{
+    if(ev.target instanceof HTMLImageElement)setIconDisplayState(ev.target,false);
   },true);
   document.addEventListener('load',ev=>{
     if(!(ev.target instanceof HTMLImageElement))return;
-    const container=ev.target.closest('.pokemon-icon');
-    if(!container)return;
-    container.classList.remove('broken');
-    container.classList.add('icon-ready');
-    saveLoadedSprite(ev.target);
+    setIconDisplayState(ev.target,true);
+    if(ev.target.closest('.pokemon-icon'))saveLoadedSprite(ev.target);
   },true);
   $('#icon-input').addEventListener('change',async ev=>{await handleIconInput(ev.target.files?.[0]);ev.target.value=''});
   $('#restore-input').addEventListener('change',async ev=>{await restore(ev.target.files?.[0]);ev.target.value=''});
