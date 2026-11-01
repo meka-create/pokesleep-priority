@@ -463,7 +463,15 @@
     const b=ev.target;
     if(b.dataset.action==='island-toggle'&&state.selected){const p=selected(),idx=Number(b.dataset.island);if(!p||!Number.isInteger(idx))return;let islands=Array.isArray(state.overrides[p.key])?[...state.overrides[p.key]]:[...p.islands];if(b.checked&&!islands.includes(idx))islands.push(idx);if(!b.checked)islands=islands.filter(i=>i!==idx);state.overrides[p.key]=islands.sort((a,b)=>a-b);save();render()}
   });
-  document.addEventListener('input',ev=>{if(ev.target.id==='search'){state.prefs.search=ev.target.value;save();renderResults()}});
+  let searchRenderTimer=null;
+  document.addEventListener('input',ev=>{
+    if(ev.target.id==='search'){
+      state.prefs.search=ev.target.value;
+      save();clearTimeout(searchRenderTimer);
+      // Avoid rebuilding all 27 sections for each intermediate keystroke.
+      searchRenderTimer=setTimeout(()=>{searchRenderTimer=null;renderResults()},120);
+    }
+  });
   document.addEventListener('error',ev=>{if(ev.target instanceof HTMLImageElement&&ev.target.closest('.pokemon-icon')){ev.target.parentElement.classList.add('broken')}},true);
   document.addEventListener('load',ev=>{if(ev.target instanceof HTMLImageElement&&ev.target.closest('.pokemon-icon'))saveLoadedSprite(ev.target)},true);
   $('#icon-input').addEventListener('change',async ev=>{await handleIconInput(ev.target.files?.[0]);ev.target.value=''});
