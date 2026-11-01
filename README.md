@@ -1,6 +1,6 @@
 # 厳選ノート v0.1.8 – GitHub Pages
 
-- Daily scheduled master validation at 03:17 UTC (12:17 JST); Actions may delay schedules.
+- Daily scheduled master validation at 19:00 UTC (04:00 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
 - Same workflow validates, updates, commits verified changes and deploys Pages directly.
 - Set **Settings → Pages → Source: GitHub Actions**.
@@ -80,7 +80,7 @@ GitHub Pagesへの公開を自動処理するため、**GitHub Actionsのソー�
 `.github/workflows/pages.yml` が以下を行います。
 
 - `main` に手動アップロード・コミットしたとき: サイトを公開。
-- 毎日日本時間12:17ごろ: GitHub Actions がポケモン・島マスターを取得・検証し、変更があれば `data/master.json` と `data/seed-data.js` をコミットした上で**同じワークフローからサイトも再公開**。
+- 毎日日本時間04:00ごろ: GitHub Actions がポケモン・島マスターを取得・検証し、変更があれば `data/master.json` と `data/seed-data.js` をコミットした上で**同じワークフローからサイトも再公開**。
 - `Actions` タブの `Run workflow`: マスター更新チェックと再公開を手動実行。
 
 マスターの参照元: [pokesleep-tool](https://github.com/nitoyon/pokesleep-tool)、[sleep-dex](https://github.com/AnticCosine/sleep-dex)、[ポケモンスリープ攻略・検証Wiki](https://wikiwiki.jp/poke_sleep/)。上流データの取得失敗・不整合のときは更新を停止し、**既存のマスターを保持**します。追加直後の新ポケモンの出現島は元データの更新まで未設定のことがあります。

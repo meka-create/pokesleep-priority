@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '17 3 * * *' # JST 12:17 (can be delayed)
+    - cron: '0 19 * * *' # JST 04:00 next day (can be delayed)
   workflow_dispatch:
 
 permissions:
