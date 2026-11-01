@@ -40,6 +40,7 @@ jobs:
           node --check sw.js
           node tests/test_sprite_cache.js
           node tests/test_client_sprite_cache.js
+          node tests/test_startup_performance.js
           python tools/bootstrap_icons.py
 
       - name: Refresh Pokémon master
