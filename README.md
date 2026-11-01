@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.11 – GitHub Pages
+# 厳選ノート v0.1.12 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,16 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.12 — コンパクトUIとフィールド背景
+
+- ページ上の見出し「ポケモン図鑑」「評価検索」を撤去し、評価数/総数を歯車ボタンの左側に移動しました。
+- 検索欄は「検索」。評価フィルターは「評価済み」を「選択解除」に変更しました。「すべて」で全選択に戻せます。
+- 島名の絵文字を削除し、睡眠タイプをうとうと＝黄色、すやすや＝水色、ぐっすり＝濃い青のカラーアイコンにしました。
+- 各フィールドのタイトル帯に風景画像を追加し、元のタイトル帯と同じ高さ54pxを維持。EX2島は通常フィールド画像を共有し、紫がかった色調で区別します。
+- 背景画像はActionsの初回実行時にassetsへ保存しGitHubリポジトリへ記録します。表示中は外部画像サーバーへアクセスしません。Service Workerもオフライン用に保存します。
+- 参照元：ユーザー提供の [ポケスリ総合資料サイト](https://wiki.pokesleep.com/ja/areas) のフィールド景観。入手元は同一景観を掲載する [Mave's Pokémon Sleep Tools](https://pokemonsleep.mave.me/)（6種類）および [Poképédiaのアンバー渓谷](https://www.pokepedia.fr/Canyon_Ambre)（1種類）。画像の権利は原権利者に帰属します。
+- 端末保存データ、通信制限、GitHub Actions定時更新（04:17 JSTごろ）は変更していません。
 
 ## v0.1.11 — 詳細モーダルのアイコン表示修正
 
