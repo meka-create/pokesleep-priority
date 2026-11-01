@@ -30,6 +30,13 @@ for(const landscape of ['amber-landscape','greengrass-ex','cyan-ex']){
 }
 assert.ok(css.includes('data-area-panel="7"]{--field-art:url(\'./assets/field-greengrass-ex.jpg\')'));
 assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cyan-ex.jpg\')'));
+assert.ok(css.includes('.island-panel[data-area-panel="1"] .island-heading{background-position:center,center 66%}'));
+assert.ok(!css.includes('.island-panel[data-area-panel="8"] .island-heading{background-position:center,center 66%}'));
+assert.ok(app.includes('const retainedCards=new Map()'));
+assert.ok(app.includes('function patchResults(el,markup)'));
+assert.ok(app.includes('patchResults(el,content)'));
+assert.ok(app.includes('patchResults(el,markup)'));
+assert.ok(app.includes('await warmStartupSprites()'));
 assert.ok(app.includes('const tabPanels=new Map()'));
 assert.ok(app.includes('render(true,keepLeavingPanel)'));
 assert.ok(app.includes('if(newPanel)renderResults()'));
