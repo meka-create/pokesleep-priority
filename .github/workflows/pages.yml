@@ -41,18 +41,7 @@ jobs:
           python -m unittest discover -s tests -v
           node --check app.js
           node --check sw.js
-          node tests/test_sprite_cache.js
-          node tests/test_client_sprite_cache.js
-          node tests/test_startup_performance.js
-          node tests/test_details_modal_sprite.js
-          node tests/test_ui_refresh.js
-          node tests/test_shell_refresh.js
-          node tests/test_icon_fallback.js
-          node tests/test_data_integrity.js
-          node tests/test_startup_master.js
-          node tests/test_species_policy.js
-          node tests/test_master_lifecycle.js
-          node tests/test_modal_position.js
+          for test in tests/*.js; do node "$test"; done
           python tools/bootstrap_fields.py
           python tools/bootstrap_icons.py
 
