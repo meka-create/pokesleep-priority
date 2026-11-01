@@ -340,10 +340,65 @@
       }).join('');
       content+=`<section class="island-panel" data-area-panel="${i}" id="island-${i}"><header class="island-heading"><h4>${AREAS[i]}</h4><span>${areaPokemon.length}匹</span></header><div class="sleep-board">${lanes}</div></section>`;
     }
-    el.innerHTML=content;
+    patchResults(el,content);
+  }
+
+  // Reuse Pokémon cards, including already-decoded images, between updates.
+  // Evaluation search requires an island-specific key because the same Pokémon
+  // can legitimately appear once in each of several islands.
+  const retainedCards=new Map(),MAX_RETAINED_CARDS=1100;
+  const resultMarkup=new WeakMap();
+  function retainedCardKey(card){
+    const species=card.dataset.key;
+    if(!species)return null;
+    if(card.classList.contains('mon-card'))return 'dex:'+species;
+    if(!card.classList.contains('mini-mon'))return null;
+    const island=card.closest('.island-panel')?.dataset.areaPanel;
+    return island===undefined?null:'search:'+island+':'+species;
+  }
+  function iconSignature(card){
+    const image=card.querySelector('.pokemon-icon img');
+    if(!image)return 'none';
+    return image.dataset.spriteSrc||image.getAttribute('src')||'';
+  }
+  function retainCard(key,card){
+    // Retain filtered-out cards for their next appearance, with bounded memory.
+    retainedCards.delete(key);
+    retainedCards.set(key,{card,source:iconSignature(card)});
+    if(retainedCards.size>MAX_RETAINED_CARDS)retainedCards.delete(retainedCards.keys().next().value);
+  }
+  function patchResults(el,markup){
+    if(resultMarkup.get(el)===markup)return; // No DOM updates if data is unchanged.
+    const template=document.createElement('template');
+    template.innerHTML=markup;
+    for(const card of el.querySelectorAll('.mon-card,.mini-mon')){
+      const key=retainedCardKey(card);
+      if(key)retainCard(key,card);
+    }
+    for(const fresh of template.content.querySelectorAll('.mon-card,.mini-mon')){
+      const key=retainedCardKey(fresh);
+      if(!key)continue;
+      const saved=retainedCards.get(key),source=iconSignature(fresh);
+      if(!saved||saved.source!==source)continue; // Icon override/form changed.
+      const previous=saved.card;
+      if(previous.dataset.grade===fresh.dataset.grade &&
+         previous.querySelector('.mon-name,.mini-mon-name')?.textContent===
+         fresh.querySelector('.mon-name,.mini-mon-name')?.textContent){
+        fresh.replaceWith(previous); // Preserve the whole unchanged card.
+        retainCard(key,previous);
+      }else{
+        const icon=previous.querySelector('.pokemon-icon');
+        const newIcon=fresh.querySelector('.pokemon-icon');
+        if(icon&&newIcon)newIcon.replaceWith(icon);
+        retainCard(key,fresh); // Rating text may change; icon node never does.
+      }
+    }
+    el.replaceChildren(template.content);
+    resultMarkup.set(el,markup);
   }
   function renderResults(){const el=$('#results');if(!el)return;const all=filterPokemon();if(state.prefs.tab==='dex'){
-    el.innerHTML=`<div class="section-top"><h3>図鑑一覧</h3><span>${all.length}件</span></div>`+(all.length?`<div class="dex-grid">${all.map(card).join('')}</div>`:`<div class="empty-state"><span class="symbol">⌕</span><strong>該当するポケモンがありません</strong>検索や絞り込みを変更してください。</div>`);
+    const markup=`<div class="section-top"><h3>図鑑一覧</h3><span>${all.length}件</span></div>`+(all.length?`<div class="dex-grid">${all.map(card).join('')}</div>`:`<div class="empty-state"><span class="symbol">⌕</span><strong>該当するポケモンがありません</strong>検索や絞り込みを変更してください。</div>`);
+    patchResults(el,markup);
   }else renderSearchResults(el,all);
     discoverSprites();
   }
@@ -354,6 +409,21 @@
   let currentPanelTab=null;
   function render(reusePanels=false,keepLeavingPanel=true){
     const main=$('#main');
+    // Keep #results and its icon DOM alive on filters, ratings, manual icons,
+    // and master updates. Only toolbar controls and changed cards are rebuilt.
+    if(!reusePanels&&currentPanelTab===state.prefs.tab&&main.firstElementChild){
+      const panel=main.firstElementChild,results=panel.querySelector('#results');
+      const template=document.createElement('template');
+      template.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();
+      const freshResults=template.content.querySelector('#results');
+      if(results&&freshResults)freshResults.replaceWith(results);
+      panel.replaceChildren(template.content);
+      // Other tab may display stale ratings/islands after an edit.
+      for(const tab of tabPanels.keys())if(tab!==state.prefs.tab)tabPanels.delete(tab);
+      renderResults();
+      updateRatedCounter();
+      return;
+    }
     if(!reusePanels){
       tabPanels.clear();
       main.replaceChildren();
@@ -699,8 +769,27 @@
   $('#restore-input').addEventListener('change',async ev=>{await restore(ev.target.files?.[0]);ev.target.value=''});
   ['#details','#settings-dialog'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target===$(id))dialogClose(id)}));
   window.addEventListener('storage',ev=>{if(ev.key===KEYS.ratings)state.ratings=fromLocal(KEYS.ratings,{});if(ev.key===KEYS.overrides)state.overrides=fromLocal(KEYS.overrides,{});render()});
+  // A full browser reload necessarily creates new DOM. Prime above-the-fold
+  // cached sprites before initial render to avoid visible placeholder flashes.
+  // This only reads local CacheStorage, never introduces extra network loads.
+  async function warmStartupSprites(){
+    let candidates=filterPokemon();
+    if(state.prefs.tab==='search'){
+      const shown=new Set(state.prefs.searchGrades);
+      candidates=candidates.filter(p=>shown.has(grade(p.key))&&islandList(p).length);
+    }
+    const urls=new Set();
+    for(const p of candidates){
+      if(state.icons.has(p.key))continue;
+      const id=spriteId(p);
+      if(id)urls.add(pngIcon(id));
+      if(urls.size>=14)break;
+    }
+    await Promise.all([...urls].map(url=>cachedSpriteBlobURL(url)));
+  }
   async function start(){
     await loadIcons();
+    await warmStartupSprites();
     render();
     refreshMaster(false);
     resolveRegionalSprites();
