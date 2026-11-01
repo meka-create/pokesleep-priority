@@ -122,6 +122,22 @@ class UpdateMasterTests(unittest.TestCase):
         self.assertEqual(next(p for p in result['pokemon'] if p['key']=='710:Medium')['name'],'バケッチャ')
         self.assertEqual(next(p for p in result['pokemon'] if p['key']=='711:Medium')['name'],'パンプジン')
 
+    def test_future_upstream_arrival_not_imported_early(self):
+        import datetime as dt
+        data=[{'id':1,'arrival':'2026-10-30'},{'id':2,'arrival':'2026-11-01'},
+              {'id':3,'arrival':'2026-11-02'},{'id':4},{'id':5,'arrival':'tomorrow'}]
+        self.assertEqual([p['id'] for p in m.released_species(data,dt.date(2026,11,1))],
+                         [1,2,4])
+
+    def test_future_costume_and_pumpkin_keys_excluded(self):
+        from species_policy import included
+        for key in ('710:XXL','710:default','711:XXL','711:default',
+                    '25:Halloween3','133:Halloween2027'):
+            self.assertFalse(included(key),key)
+        for key in ('25:Halloween','133:Halloween','37:Alola',
+                    '194:Paldea','849:Low Key','999:default'):
+            self.assertTrue(included(key),key)
+
     def test_reject_partial_master(self):
         seed=make_seed()
         mons=[{'id':x['id'],'name':x['name'],'sleepType':'dozing','form':x['form']} for x in seed['pokemon']]

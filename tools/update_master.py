@@ -173,11 +173,29 @@ def assemble(pokemon_data, translations, encounter_records, previous):
             'areas':list(AREA_NAMES),'pokemon':output}
 
 
+def released_species(pokemon_data, today=None):
+    """Exclude pre-release announcements using the Pokémon Sleep JST date."""
+    if today is None:
+        today=dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date()
+    result=[]
+    for entry in pokemon_data:
+        if not isinstance(entry,dict):continue
+        arrival=entry.get('arrival')
+        if arrival:
+            try: release=dt.date.fromisoformat(arrival)
+            except (TypeError,ValueError):continue
+            if release>today:continue
+        result.append(entry)
+    return result
+
+
 def main():
     previous=json.loads(OUT.read_text('utf-8')) if OUT.exists() else make_seed()
     species=json.loads(download(BASE+'src/data/pokemon.json'))
     names=json.loads(download(BASE+'src/i18n/ja/pokemons.json'))['pokemons']
     if len(species)<200 or len(names)<200:raise ValueError('Unexpectedly small species source')
+    species=released_species(species)
+    if len(species)<200:raise ValueError('Unexpectedly small released species source')
     # Prefer the newer, independently maintained wiki tables when they pass
     # strict volume/field validation. Fall back to structured nine-field data.
     wiki_error=None

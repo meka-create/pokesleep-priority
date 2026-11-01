@@ -6,8 +6,8 @@ const master=JSON.parse(fs.readFileSync(path.join(ROOT,'data/master.json'),'utf8
 const seeded=fs.readFileSync(path.join(ROOT,'data/seed-data.js'),'utf8');
 const EXCLUDED=['25:Low Key','25:Halloween2','133:Halloween2',
  '710:Small','710:Large','710:Jumbo','711:Small','711:Large','711:Jumbo'];
-assert.equal(master.pokemon.length,245);
-assert.equal(new Set(master.pokemon.map(p=>p.key)).size,245);
+assert.ok(master.pokemon.length>=245);
+assert.equal(new Set(master.pokemon.map(p=>p.key)).size,master.pokemon.length);
 assert.ok(EXCLUDED.every(k=>!master.pokemon.some(p=>p.key===k)));
 assert.ok(seeded.startsWith('window.__SEED_MASTER__='));
 assert.deepEqual(JSON.parse(seeded.slice('window.__SEED_MASTER__='.length).trim().replace(/;$/,'')),master);
@@ -23,8 +23,13 @@ const normalize=vm.runInContext('canonicalizePokemon',ctx);
 const originals=[...master.pokemon,...EXCLUDED.map(key=>({
  key,id:Number(key.split(':')[0]),name:'obsolete',form:key.split(':')[1],islands:[0]
 }))];
-const result=normalize(originals);
-assert.equal(result.length,245,'older 254-item local master must shrink to 245');
+const result=normalize([...originals,
+ {key:'710:XXL',id:710,name:'ギガ追加',islands:[]},
+ {key:'133:Halloween3',id:133,name:'追加衣装',islands:[]}]);
+assert.equal(vm.runInContext("isIncludedPokemonKey('710:XXL')",ctx),false);
+assert.equal(vm.runInContext("isIncludedPokemonKey('133:Halloween3')",ctx),false);
+assert.equal(vm.runInContext("isIncludedPokemonKey('849:Low Key')",ctx),true);
+assert.equal(result.length,master.pokemon.length,'old forms must not increase species count');
 assert.ok(EXCLUDED.every(k=>!result.find(p=>p.key===k)));
 const mergeTest=app.slice(app.indexOf('  function mergeMaster(next){'),
  app.indexOf('  async function refreshMaster(force=false)'));
@@ -37,7 +42,7 @@ vm.runInContext(app.slice(a,b)+mergeTest,context);
 const merge=vm.runInContext('mergeMaster',context);
 const stale={...master,updatedAt:'2026-12-01T00:00:00+00:00',pokemon:originals};
 merge(stale);
-assert.equal(state.master.pokemon.length,245,'upstream 254 records must not reappear');
+assert.equal(state.master.pokemon.length,master.pokemon.length,'excluded forms must not reappear');
 const raw=app.slice(app.indexOf('  async function refreshMaster(force=false)'),app.indexOf("  document.addEventListener('click'"));
-assert.match(raw,/EXCLUDED_MASTER_KEYS\.has\(key\)\|\|known\.has\(key\)/,'direct client species fetch must reject obsolete form keys');
+assert.match(raw,/!isIncludedPokemonKey\(key\)\|\|known\.has\(key\)/,'direct client species fetch must reject obsolete form keys');
 console.log('PASS: canonical 245 species offline, cached, fetched and upstream; no 254 regression');

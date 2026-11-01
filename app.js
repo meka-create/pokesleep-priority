@@ -13,10 +13,17 @@
   // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
   const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
   const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
+  function isIncludedPokemonKey(key){
+    if(EXCLUDED_MASTER_KEYS.has(key))return false;
+    const [num,form]=String(key).split(':');
+    if(num==='710'||num==='711')return form==='Medium';
+    if((num==='25'||num==='133')&&form?.startsWith('Halloween'))return form==='Halloween';
+    return true;
+  }
   function canonicalizePokemon(records){
     const seen=new Set(),result=[];
     for(const pokemon of records||[]){
-      if(!pokemon||EXCLUDED_MASTER_KEYS.has(pokemon.key)||seen.has(pokemon.key))continue;
+      if(!pokemon||!isIncludedPokemonKey(pokemon.key)||seen.has(pokemon.key))continue;
       seen.add(pokemon.key);
       const name=CANONICAL_MASTER_NAMES[pokemon.key];
       result.push(name&&pokemon.name!==name?{...pokemon,name}:pokemon);
@@ -502,11 +509,13 @@
       return p;
     });
     for(const p of old.pokemon)if(!newer.some(x=>x.key===p.key))newer.push(p); // temporary upstream omissions should not erase user entries
-    state.master={...next,pokemon:canonicalizePokemon(newer),areasReady:Boolean(next.areasReady||old.areasReady)};
-    if(old.areasReady&&!next.areasReady)state.master.updatedAt=old.updatedAt;
-    const visibleDataChanged=Boolean(old.areasReady)!==Boolean(state.master.areasReady)
-      ||JSON.stringify(old.pokemon)!==JSON.stringify(newer);
-    setLocal(KEYS.master,state.master);
+    const candidate={...next,pokemon:canonicalizePokemon(newer),areasReady:Boolean(next.areasReady||old.areasReady)};
+    if(old.areasReady&&!next.areasReady)candidate.updatedAt=old.updatedAt;
+    // Do not claim new data is available if persistent storage failed.
+    if(!setLocal(KEYS.master,candidate))return 0;
+    state.master=candidate;
+    const visibleDataChanged=Boolean(old.areasReady)!==Boolean(candidate.areasReady)
+      ||JSON.stringify(old.pokemon)!==JSON.stringify(candidate.pokemon);
     if(visibleDataChanged){render();resolveRegionalSprites()}
     else if($('#settings-dialog').open)settings();
     return updated;
@@ -544,9 +553,13 @@
     // Supplement only NEW species when the deployed static master has not yet rebuilt.
     // Island mapping is set only by a validated scheduled Wiki rebuild, not guessed.
     const lastCheck=fromLocal('gense-note-upstream-check','');
-    if(force||lastCheck!==today){try{const base='https://raw.githubusercontent.com/nitoyon/pokesleep-tool/main/';const [sp,ja]=await Promise.all([fetchJSON(base+'src/data/pokemon.json'),fetchJSON(base+'src/i18n/ja/pokemons.json')]);if(!Array.isArray(sp)||!ja?.pokemons)throw Error('upstream schema');const known=new Set(getPokemon().map(p=>p.key));let inserts=0;
-      for(const p of sp){if(!Number.isInteger(p.id)||!p.name||p.arrival&&p.arrival>today)continue;const key=`${p.id}:${p.form||'default'}`;if(EXCLUDED_MASTER_KEYS.has(key)||known.has(key))continue;const sleep={dozing:'うとうと',snoozing:'すやすや',slumbering:'ぐっすり'}[p.sleepType]||'不明';const name=ja.pokemons[p.name]||p.name;state.master.pokemon.push({key,id:p.id,name,sleep,form:p.form||'',islands:[]});known.add(key);inserts++}
-      if(inserts){state.master.pokemon.sort((a,b)=>a.id-b.id||a.key.localeCompare(b.key));setLocal(KEYS.master,state.master);render();resolveRegionalSprites()}newCount+=inserts;setLocal('gense-note-upstream-check',today);
+    if(force||lastCheck!==today){try{const base='https://raw.githubusercontent.com/nitoyon/pokesleep-tool/main/';const [sp,ja]=await Promise.all([fetchJSON(base+'src/data/pokemon.json'),fetchJSON(base+'src/i18n/ja/pokemons.json')]);if(!Array.isArray(sp)||!ja?.pokemons)throw Error('upstream schema');const originalPokemon=state.master.pokemon.slice(),known=new Set(getPokemon().map(p=>p.key));let inserts=0;
+      for(const p of sp){if(!Number.isInteger(p.id)||!p.name||p.arrival&&p.arrival>today)continue;const key=`${p.id}:${p.form||'default'}`;if(!isIncludedPokemonKey(key)||known.has(key))continue;const sleep={dozing:'うとうと',snoozing:'すやすや',slumbering:'ぐっすり'}[p.sleepType]||'不明';const name=ja.pokemons[p.name]||p.name;state.master.pokemon.push({key,id:p.id,name,sleep,form:p.form||'',islands:[]});known.add(key);inserts++}
+      if(inserts){
+         state.master.pokemon.sort((a,b)=>a.id-b.id||a.key.localeCompare(b.key));
+         if(setLocal(KEYS.master,state.master)){render();resolveRegionalSprites()}
+         else{state.master.pokemon=originalPokemon;inserts=0}
+       }newCount+=inserts;setLocal('gense-note-upstream-check',today);
     }catch(e){errors.push('新種の直接確認に失敗')}}
     setLocal(MASTER_CHECK_KEY,{slot:checkSlot,time:Date.now(),ok:siteUpdate});
     state.status=siteUpdate?(state.master.areasReady?'島別マスターの確認完了':'図鑑マスターの確認完了'):'オンライン取得できませんでした';if(newCount)state.status+=` / 新規${newCount}件`;
@@ -569,7 +582,13 @@
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
     if(action==='upload-icon')$('#icon-input').click();
     if(action==='reset-icon'&&state.selected)await setIcon(state.selected,null);
-    if(action==='reset-islands'&&state.selected){delete state.overrides[state.selected];save();render();details();toast('自動マスターの島設定に戻しました')}
+    if(action==='reset-islands'&&state.selected){
+       const key=state.selected,previous=state.overrides[key],hadOverride=Object.hasOwn(state.overrides,key);
+       delete state.overrides[key];
+       if(!setLocal(KEYS.overrides,state.overrides)){
+         if(hadOverride)state.overrides[key]=previous;
+       }else{render();details();toast('自動マスターの島設定に戻しました')}
+     }
     if(action==='sync')await refreshMaster(true);
     if(action==='backup')backup();
     if(action==='restore')$('#restore-input').click();

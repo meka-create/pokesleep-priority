@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.19 – GitHub Pages
+# 厳選ノート v0.1.20 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,16 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.20 — 独立最終監査
+
+- 将来のハロウィン衣装やバケッチャ・パンプジンの追加サイズが245種計数へ混入しないよう汎用ルールを追加。正規の新ポケモンは継続追加可能。
+- PokeSleepToolの公開予定日をJSTで確認し、解禁前のポケモンを自動マスターに追加しない。
+- GitHub ActionsのWiki更新後にも必ずデータ検証・回帰テストを実施し、検証済みデータだけを公開。
+- データの永続保存失敗時、マスター追加・島設定解除が成功したと表示しないよう保護。
+- 正規新種の追加で245固定テストが先祖返り的なリリース障害にならないよう変更。
+- 旧Node 20警告のあるGitHub Actions checkout / setup-python を公式v7へ移行。
+- 保存キーと既存245件データは変更していない。v0.1.19の実機受入はPASS。v0.1.20の実機更新は未確認。
 
 ## v0.1.19 — ゲーム内図鑑245種へ統一・先祖返り対策
 

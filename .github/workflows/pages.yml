@@ -22,10 +22,10 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -50,6 +50,7 @@ jobs:
           node tests/test_data_integrity.js
           node tests/test_startup_master.js
           node tests/test_species_policy.js
+          node tests/test_master_lifecycle.js
           node tests/test_modal_position.js
           python tools/bootstrap_fields.py
           python tools/bootstrap_icons.py
@@ -57,6 +58,13 @@ jobs:
       - name: Refresh Pokémon master
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[verify-master]')
         run: python tools/update_master.py
+
+      - name: Validate refreshed master before publishing
+        run: |
+          python -m unittest discover -s tests -v
+          node tests/test_species_policy.js
+          node tests/test_startup_master.js
+          node tests/test_master_lifecycle.js
 
       - name: Keep daily schedule enabled during long unchanged periods
         if: github.event_name == 'schedule'

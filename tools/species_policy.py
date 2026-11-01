@@ -8,7 +8,12 @@ EXCLUDED_KEYS=frozenset(["25:Low Key","25:Halloween2","133:Halloween2","710:Smal
 CANONICAL_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"}
 
 def included(key):
-    return key not in EXCLUDED_KEYS
+    if key in EXCLUDED_KEYS:return False
+    number,sep,form=key.partition(':')
+    if sep and number in ('710','711'):return form=='Medium'
+    if sep and number in ('25','133') and form.startswith('Halloween'):
+        return form=='Halloween'
+    return True
 
 def name_for(key, original):
     return CANONICAL_NAMES.get(key,original)
