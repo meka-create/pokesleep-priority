@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   schedule:
-    - cron: '0 19 * * *' # JST 04:00 next day (can be delayed)
+    - cron: '17 19 * * *' # JST 04:17 next day (can be delayed)
   workflow_dispatch:
 
 permissions:
@@ -45,11 +45,24 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[verify-master]')
         run: python tools/update_master.py
 
+      - name: Keep daily schedule enabled during long unchanged periods
+        if: github.event_name == 'schedule'
+        shell: bash
+        run: |
+          # Public repo schedules can be disabled after 60 days of inactivity.
+          # Preserve long-term activity without changing the Pokémon master.
+          last_commit=$(git log -1 --format=%ct)
+          now=$(date -u +%s)
+          if (( now - last_commit >= 35 * 24 * 60 * 60 )); then
+            date -u +'%Y-%m-%dT%H:%M:%SZ' > data/schedule-keepalive.txt
+            echo 'Repository idle >=35 days: keeping scheduled workflow active.'
+          fi
+
       # GITHUB_TOKEN commits do not trigger another Pages workflow.
       # Publish the current working directory in this same run.
       - name: Persist validated icon/master changes
         run: |
-          git add -- assets/ data/master.json data/seed-data.js
+          git add -- assets/ data/
           if ! git diff --cached --quiet; then
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
