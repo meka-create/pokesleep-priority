@@ -393,9 +393,29 @@
     for(const p of old.pokemon)if(!newer.some(x=>x.key===p.key))newer.push(p); // temporary upstream omissions should not erase user entries
     state.master={...next,pokemon:newer,areasReady:Boolean(next.areasReady||old.areasReady)};
     if(old.areasReady&&!next.areasReady)state.master.updatedAt=old.updatedAt;
-    setLocal(KEYS.master,state.master);render();resolveRegionalSprites();return updated;
+    const visibleDataChanged=Boolean(old.areasReady)!==Boolean(state.master.areasReady)
+      ||JSON.stringify(old.pokemon)!==JSON.stringify(newer);
+    setLocal(KEYS.master,state.master);
+    if(visibleDataChanged){render();resolveRegionalSprites()}
+    else if($('#settings-dialog').open)settings();
+    return updated;
   }
-  async function refreshMaster(force=false){if(loadingMaster)return;loadingMaster=true;const previousStatus=state.status;state.status='確認中';let errors=[];let newCount=0;let siteUpdate=false;
+  const MASTER_CHECK_KEY='gense-note-master-check-v1';
+  function masterCheckSlot(){
+    // Scheduled update is around 04:17 JST; refresh after 04:45 as well.
+    const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Tokyo',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date());
+    return nowJST()+(time>='04:45'?'-post':'-pre');
+  }
+  function shouldCheckMaster(force=false){
+    if(force)return true;
+    const previous=fromLocal(MASTER_CHECK_KEY,{}),slot=masterCheckSlot();
+    return previous.slot!==slot||(!previous.ok&&Date.now()-previous.time>=30*60*1000);
+  }
+  async function refreshMaster(force=false){
+    if(loadingMaster||!shouldCheckMaster(force))return;
+    loadingMaster=true;
+    const checkSlot=masterCheckSlot();
+    const previousStatus=state.status;state.status='確認中';let errors=[];let newCount=0;let siteUpdate=false;
     try{const latest=await fetchJSON(`./data/master.json?v=${Date.now()}`);if(validMaster(latest)){newCount+=mergeMaster(latest);siteUpdate=true}else errors.push('公開マスターの検証に失敗')}catch(e){errors.push('公開マスターを取得できません')}
     // Netlify fallback only when no validated static master exists. Do not replace
     // an already verified offline 9-island snapshot with an older live result.
@@ -412,6 +432,7 @@
       for(const p of sp){if(!Number.isInteger(p.id)||!p.name||p.arrival&&p.arrival>today)continue;const key=`${p.id}:${p.form||'default'}`;if(known.has(key))continue;const sleep={dozing:'うとうと',snoozing:'すやすや',slumbering:'ぐっすり'}[p.sleepType]||'不明';const name=ja.pokemons[p.name]||p.name;state.master.pokemon.push({key,id:p.id,name,sleep,form:p.form||'',islands:[]});known.add(key);inserts++}
       if(inserts){state.master.pokemon.sort((a,b)=>a.id-b.id||a.key.localeCompare(b.key));setLocal(KEYS.master,state.master);render();resolveRegionalSprites()}newCount+=inserts;setLocal('gense-note-upstream-check',today);
     }catch(e){errors.push('新種の直接確認に失敗')}}
+    setLocal(MASTER_CHECK_KEY,{slot:checkSlot,time:Date.now(),ok:siteUpdate});
     state.status=siteUpdate?(state.master.areasReady?'島別マスターの確認完了':'図鑑マスターの確認完了'):'オンライン取得できませんでした';if(newCount)state.status+=` / 新規${newCount}件`;
     loadingMaster=false;
     if($('#settings-dialog').open)settings();if(force)toast(errors.length?`確認完了（一部取得失敗：${errors.length}件）`:(newCount?`新規${newCount}件を追加しました`:'最新データを確認しました'));
