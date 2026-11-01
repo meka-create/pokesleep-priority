@@ -141,8 +141,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .island-panel[data-area-panel="7"]{--field-art:url('./assets/field-greengrass-ex.jpg')}
 .island-panel[data-area-panel="1"]{--field-art:url('./assets/field-cyan.png')}
 /* Ordinary Cyan Beach: favor the shoreline and sea; EX keeps its own crop. */
-/* Cyan Beach ocean is along the bottom of the source image. */
-.island-panel[data-area-panel="1"] .island-heading{background-position:center,center bottom}
+
 .island-panel[data-area-panel="8"]{--field-art:url('./assets/field-cyan-ex.jpg')}
 .island-panel[data-area-panel="2"]{--field-art:url('./assets/field-taupe.png')}
 .island-panel[data-area-panel="3"]{--field-art:url('./assets/field-snowdrop.png')}
