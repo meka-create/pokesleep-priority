@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.15 – GitHub Pages
+# 厳選ノート v0.1.16 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,15 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.16 — 最終監査追補（2026-11-01）
+
+- 実マスター更新で新規衣装フォーム 25:Halloween2 と 133:Halloween2 が追加されたため、元のフォームと区別できる「ハロウィン・紫」を表示。キーと保存済み評価は変更しません。
+- 同名の旧ハロウィン衣装と新しい紫衣装が混同されないよう、定期更新側・フォールバック側の名称解決を統一しました。
+- 古い端末保存マスターより新しい同梱マスターを起動時に採用し、端末側だけに存在するポケモンや確定済み島情報は維持。新しい端末マスターは古い同梱データで上書きしません。
+- GitHub Actionsが毎朝04:17ごろより遅延しても、成功後6時間・失敗後30分で必要に応じてマスターを再確認します（起動ごとの通信なし）。
+- 追加の回帰テスト・Service Worker更新により、コードの先祖返りとデータ損失を防止します。ポケモン画像のキャッシュは引き続き保持します。
+- 実機での全操作確認、翌朝の定時実行の結果は自動テストとは区別します。
 
 ## v0.1.15 — 最終監査・データ保護強化（2026-11-01）
 
