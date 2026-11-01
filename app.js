@@ -347,7 +347,7 @@
   // Evaluation search requires an island-specific key because the same Pokémon
   // can legitimately appear once in each of several islands.
   const retainedCards=new Map(),MAX_RETAINED_CARDS=1100;
-  const resultMarkup=new WeakMap();
+  const resultMarkup=new WeakMap(),islandPanelMarkup=new WeakMap();
   function retainedCardKey(card){
     const species=card.dataset.key;
     if(!species)return null;
@@ -375,11 +375,23 @@
       const key=retainedCardKey(card);
       if(key)retainCard(key,card);
     }
+    // Only rebuild island panels whose source data actually changed. Other
+    // islands retain their existing heading, sleep lanes and decoded images.
+    for(const incoming of template.content.querySelectorAll('.island-panel')){
+      const area=incoming.dataset.areaPanel;
+      const original=el.querySelector('.island-panel[data-area-panel="'+area+'"]');
+      const signature=incoming.outerHTML;
+      if(original&&islandPanelMarkup.get(original)===signature){
+        incoming.replaceWith(original);
+      }else{
+        islandPanelMarkup.set(incoming,signature);
+      }
+    }
     for(const fresh of template.content.querySelectorAll('.mon-card,.mini-mon')){
       const key=retainedCardKey(fresh);
       if(!key)continue;
       const saved=retainedCards.get(key),source=iconSignature(fresh);
-      if(!saved||saved.source!==source)continue; // Icon override/form changed.
+      if(!saved||saved.card===fresh||saved.source!==source)continue; // Same island or changed icon.
       const previous=saved.card;
       if(previous.dataset.grade===fresh.dataset.grade &&
          previous.querySelector('.mon-name,.mini-mon-name')?.textContent===
@@ -507,6 +519,8 @@
         }
       }
     }
+    // Keep markup comparisons honest after direct in-place quick grade edits.
+    const results=$('#results');if(results)resultMarkup.delete(results);
     // Ratings displayed by the detached search panel are now stale.
     tabPanels.delete('search');
     const counter=$('#rated-count');if(counter)counter.textContent=countRated();
