@@ -1,4 +1,15 @@
-# 厳選ノート v0.1.20 – GitHub Pages
+# 厳選ノート v0.1.21 – GitHub Pages
+
+## v0.1.21 — フィールド画像・アイコン表示の改善（2026-11-02）
+
+- アンバー渓谷を島マップから景観画像へ変更。ワカクサ本島EXとシアンの砂浜EXもそれぞれ専用の景観画像に変更しました（EXの紫の強調表示は保持）。
+- 景観画像はユーザー指定の [ポケスリ総合資料サイト](https://wiki.pokesleep.com/ja/areas) の各フィールド詳細に掲載された画像を参照し、Actions初回実行で3枚のJPEGをリポジトリへ保存。アプリ表示時に外部画像サービスへは接続しません。画像の権利は原権利者に帰属します。
+- 図鑑／評価検索のタブ切替時、読み込み済みのDOMと画像を保持・再利用することで、一瞬の画像空白や四角いプレースホルダーを抑制。キャッシュ済み標準画像は既存Blob URLを再利用し、画像通信・レート制限ルールも維持。
+- データ変更時はキャッシュした表示を無効化し、古い評価が表示されることを防止。画像の読み込み途中でタブを切り替えても、戻った際に処理を再開。
+- 新しい3枚の画像をService Workerのオフラインキャッシュに追加。保存キー・バックアップ形式・245種マスター・毎朝04:17の更新予定は変更しません。
+- GitHub ActionsでのテストPASSとAndroid Chrome実機の受入は分けて判定します。
+
+## v0.1.20 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
