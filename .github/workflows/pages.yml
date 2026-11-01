@@ -42,7 +42,7 @@ jobs:
           python tools/bootstrap_icons.py
 
       - name: Refresh Pokémon master
-        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[verify-master]')
         run: python tools/update_master.py
 
       # GITHUB_TOKEN commits do not trigger another Pages workflow.

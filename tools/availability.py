@@ -60,7 +60,9 @@ def master_from_availability(species, translations, entries, previous):
         for form in ('Small','Large','Jumbo'):
             masks[f'{num}:{form}']=masks.get(f'{num}:{form}',0)|medium
     out=[]; keys=set()
-    labels=translations['pokemons']
+    # The updater passes a flattened 'pokemons' map; standalone callers may
+    # supply the original nested language document instead.
+    labels=translations.get('pokemons', translations)
     en_sleep={'dozing':'うとうと','snoozing':'すやすや','slumbering':'ぐっすり'}
     for p in species:
         if not isinstance(p,dict) or not isinstance(p.get('id'),int) or not p.get('name'):continue

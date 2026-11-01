@@ -37,6 +37,25 @@ class UpdateMasterTests(unittest.TestCase):
         self.assertEqual(future['name'],'シンポケ')
         self.assertEqual(future['islands'],[6])
 
+    def test_fallback_source_accepts_flat_translation_map(self):
+        # Real updater passes the flattened Japanese name dictionary.
+        import json
+        from availability import master_from_availability, FIELD_KEYS
+        root=Path(__file__).resolve().parents[1]
+        prev=json.loads((root/'data/master.json').read_text('utf-8'))
+        species=[dict(id=p['id'], name=p['name'], sleepType='dozing',
+                      form=p.get('form','')) for p in prev['pokemon']]
+        species.append(dict(id=999, name='FutureTest', sleepType='dozing'))
+        rows=[dict(id='baseline', pokedex_number=str(p['id']),
+                   availability={'1_star':list(FIELD_KEYS)})
+              for p in prev['pokemon']]
+        rows.append(dict(id='futuretest', pokedex_number='999',
+                         availability={'1_star':['cyan_beach']}))
+        result=master_from_availability(species, {'FutureTest':'シンポケ'}, rows, prev)
+        new=next(p for p in result['pokemon'] if p['key']=='999:default')
+        self.assertEqual(new['name'],'シンポケ')
+        self.assertEqual(new['islands'],[1])
+
     def test_reject_partial_master(self):
         seed=make_seed()
         mons=[{'id':x['id'],'name':x['name'],'sleepType':'dozing','form':x['form']} for x in seed['pokemon']]
