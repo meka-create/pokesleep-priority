@@ -10,6 +10,7 @@ import json
 import re
 import sys
 import urllib.request
+from urllib.parse import urlsplit, urlunsplit, quote
 from collections import defaultdict
 from pathlib import Path
 from bs4 import BeautifulSoup
@@ -30,8 +31,14 @@ SLEEP_EN = {'dozing':'うとうと','snoozing':'すやすや','slumbering':'ぐ�
 ALIASES = {'Pikachu (Low Key)': 'ピカチュウ（ローキー）'}
 
 
+def safe_request_url(url):
+    """Encode Japanese Wiki path segments before passing them to urllib."""
+    parsed=urlsplit(url)
+    return urlunsplit((parsed.scheme,parsed.netloc,quote(parsed.path,safe='/%'),parsed.query,parsed.fragment))
+
+
 def download(url):
-    req=urllib.request.Request(url,headers={'User-Agent':'PokeSleepPriorityPWA/1.0 (personal open-source data updater)','Accept':'text/html,application/json','Cache-Control':'no-cache'})
+    req=urllib.request.Request(safe_request_url(url),headers={'User-Agent':'PokeSleepPriorityPWA/1.0 (personal open-source data updater)','Accept':'text/html,application/json','Cache-Control':'no-cache'})
     with urllib.request.urlopen(req,timeout=30) as response:
         return response.read().decode('utf-8')
 

@@ -21,6 +21,13 @@ class UpdateMasterTests(unittest.TestCase):
     def test_html_rows(self):
         html='<table><tr><td>img</td><td>0001</td><td>フシギダネ</td><td>うとうと</td><td>1</td><td>ワカクサ</td><td>2</td><td></td></tr></table>'
         self.assertIn((1,'フシギダネ','うとうと',0),m.parse_html_wiki(html))
+    def test_unicode_wiki_url_is_encoded(self):
+        url=m.safe_request_url('https://wikiwiki.jp/poke_sleep/出現ポケモン一覧/うとうと')
+        self.assertTrue(url.startswith('https://wikiwiki.jp/poke_sleep/'))
+        self.assertIn('%E5%87%BA%E7%8F%BE',url)
+        self.assertNotIn('うとうと',url)
+        self.assertEqual(m.safe_request_url(url),url)
+
     def test_areas(self):
         self.assertEqual(m.area_for('シアン EX'),8)
         self.assertEqual(m.area_for('シアン'),1)
