@@ -7,7 +7,8 @@ button {color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px solid var(--accent);outline-offset:3px}
 .shell {max-width:900px;min-height:100dvh;margin:0 auto;position:relative;padding-bottom:calc(88px + env(safe-area-inset-bottom,0px))}
 .app-header {display:flex;align-items:center;gap:12px;height:77px;padding:12px 18px;border-bottom:1px solid #2b3d52;position:sticky;top:0;z-index:5;background:#111b2af2;backdrop-filter:blur(14px)}
-.brandmark {background:linear-gradient(145deg,#e8b955,#fbdf94);color:#142335;font-size:33px;width:48px;height:48px;display:grid;place-items:center;border-radius:17px;font-weight:bold;box-shadow:0 3px 12px #eabf6330}
+.brandmark {width:48px;height:48px;display:grid;place-items:center;flex:none;border-radius:15px;overflow:hidden}
+.brandmark img {display:block;width:100%;height:100%;object-fit:contain}
 .brandtext {flex:1;line-height:1.15}.brandtext h1 {font-size:21px;margin:4px 0 0;letter-spacing:.04em}.eyebrow {font-size:10px;font-weight:800;letter-spacing:.13em;color:var(--accent)}
 .icon-button {width:42px;height:42px;background:var(--panel);border:1px solid var(--border);border-radius:13px;font-size:25px;display:grid;place-items:center}
 .main {padding:19px 15px 24px}

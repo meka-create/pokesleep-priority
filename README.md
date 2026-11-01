@@ -1,3 +1,18 @@
+# 厳選ノート v0.1.8 – GitHub Pages
+
+- Daily scheduled master validation at 03:17 UTC (12:17 JST); Actions may delay schedules.
+- Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
+- Same workflow validates, updates, commits verified changes and deploys Pages directly.
+- Set **Settings → Pages → Source: GitHub Actions**.
+- The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
+- User ratings and custom icons live on the local device and are never overwritten by the update.
+
+### First-run check
+
+Actions → Update master and publish GitHub Pages → Run workflow. Verify both jobs succeed, eight assets are committed and the next scheduled run appears.
+
+---
+
 # 厳選ノート — GitHub Pages版 (v0.1.7)
 
 ポケモンスリープの厳選優先度を記録し、全9島・3つの睡眠タイプごとに一覧する個人用PWAです。
