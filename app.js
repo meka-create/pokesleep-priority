@@ -482,8 +482,21 @@
       searchRenderTimer=setTimeout(()=>{searchRenderTimer=null;renderResults()},120);
     }
   });
-  document.addEventListener('error',ev=>{if(ev.target instanceof HTMLImageElement&&ev.target.closest('.pokemon-icon')){ev.target.parentElement.classList.add('broken')}},true);
-  document.addEventListener('load',ev=>{if(ev.target instanceof HTMLImageElement&&ev.target.closest('.pokemon-icon'))saveLoadedSprite(ev.target)},true);
+  document.addEventListener('error',ev=>{
+    if(!(ev.target instanceof HTMLImageElement))return;
+    const container=ev.target.closest('.pokemon-icon');
+    if(!container)return;
+    container.classList.remove('icon-ready');
+    container.classList.add('broken');
+  },true);
+  document.addEventListener('load',ev=>{
+    if(!(ev.target instanceof HTMLImageElement))return;
+    const container=ev.target.closest('.pokemon-icon');
+    if(!container)return;
+    container.classList.remove('broken');
+    container.classList.add('icon-ready');
+    saveLoadedSprite(ev.target);
+  },true);
   $('#icon-input').addEventListener('change',async ev=>{await handleIconInput(ev.target.files?.[0]);ev.target.value=''});
   $('#restore-input').addEventListener('change',async ev=>{await restore(ev.target.files?.[0]);ev.target.value=''});
   ['#details','#settings-dialog'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target===$(id))dialogClose(id)}));
