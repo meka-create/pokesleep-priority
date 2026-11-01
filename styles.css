@@ -35,7 +35,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .search-toolbar .search-input {margin-bottom:0}
 .search-toolbar .switch-line {padding-top:12px}
 .overview-heading {margin:18px 3px 12px}
-.island-panel {background:#192838;border:1px solid var(--border);border-radius:17px;margin:0 0 16px;overflow:hidden;scroll-margin-top:12px}
+.island-panel {background:#192838;border:1px solid var(--border);border-radius:17px;margin:0 0 16px;overflow:hidden;scroll-margin-top:12px;content-visibility:auto;contain-intrinsic-size:auto 550px}
 .island-heading {background:#24364b;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 14px;border-bottom:1px solid var(--border)}
 .island-heading h4 {font-size:15px;line-height:1.3;margin:0;font-weight:800}
 .island-heading>span {font-size:11px;color:#b6c6d6;background:#344a5e;border-radius:20px;padding:4px 9px;white-space:nowrap}
