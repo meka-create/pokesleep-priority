@@ -96,10 +96,12 @@
   const pngIcon=id=>`${SPRITE_ROOT}${id}.png`;
   function iconMarkup(p){
     const custom=state.icons.get(p.key),id=spriteId(p),src=custom||(id?pngIcon(id):'');
+    // Unit tests also isolate this renderer without initializing the cache module.
+    const preloaded=!custom&&src&&typeof spriteBlobs!=='undefined'?spriteBlobs.get(src):null;
     // Only manual icons load immediately. Remote sprites enter a visible-only,
     // rate-limited queue; their network requests are additionally governed by SW.
     const tag=custom?`<img src="${htmlEscape(custom)}" alt="" decoding="async">`
-      :src?`<img ${spriteBlobs.has(src)?`src="${htmlEscape(spriteBlobs.get(src))}" `:''}data-sprite-src="${htmlEscape(src)}" alt="" decoding="async" referrerpolicy="no-referrer">`:'';
+      :src?`<img ${preloaded?`src="${htmlEscape(preloaded)}" `:''}data-sprite-src="${htmlEscape(src)}" alt="" decoding="async" referrerpolicy="no-referrer">`:'';
     // Keep a recovery label, but do not render any kana behind a working
     // (possibly transparent) image. Only show it if that image actually fails.
     const initial=htmlEscape(p.name.slice(0,1));
