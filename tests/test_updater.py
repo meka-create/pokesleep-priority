@@ -9,7 +9,7 @@ class UpdateMasterTests(unittest.TestCase):
     def test_seed_has_unique_forms(self):
         p=make_seed()['pokemon']
         self.assertEqual(len(p),245)
-        self.assertEqual(len(set(x['key'] for x in p)),252)
+        self.assertEqual(len(set(x['key'] for x in p)),245)
         self.assertEqual(next(x for x in p if x['key']=='194:Paldea')['sleep'],'うとうと')
         self.assertEqual(next(x for x in p if x['key']=='37:Alola')['sleep'],'ぐっすり')
     def test_wiki_raw_rows(self):
