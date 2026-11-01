@@ -6,11 +6,14 @@ const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
 function block(selector){
- const start=css.indexOf(selector+'{');
- assert.ok(start>=0,'missing selector: '+selector);
- const end=css.indexOf('}',start);
- assert.ok(end>start,'missing close brace: '+selector);
- return css.slice(start,end+1);
+ // Check a whole selector, allowing whitespace before '{' but not accidentally
+ // matching '.bottom-sheet' inside the higher-specificity '#details' selector.
+ const pattern=selector==='.bottom-sheet'
+   ? /(?:^|\n)\.bottom-sheet\s*\{[^{}]*\}/
+   : /(?:^|\n)#details\.bottom-sheet\s*\{[^{}]*\}/;
+ const match=css.match(pattern);
+ assert.ok(match,'missing CSS selector: '+selector);
+ return match[0];
 }
 const original=block('.bottom-sheet');
 assert.match(original,/position\s*:\s*fixed/);
