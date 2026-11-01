@@ -137,13 +137,15 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .island-heading{position:relative;isolation:isolate;height:54px;min-height:54px;padding:11px 14px;background-color:#24364b;background-image:linear-gradient(90deg,rgba(8,18,30,.84) 0%,rgba(8,18,30,.63) 56%,rgba(8,18,30,.5) 100%),var(--field-art,none);background-position:center,center 48%;background-size:cover,cover;background-repeat:no-repeat}
 .island-heading h4{color:#fff;font-size:15px;line-height:1.35;letter-spacing:.015em;text-shadow:0 1px 3px #000,0 0 9px #000a;min-width:0}
 .island-heading>span{color:#fff;background:rgba(8,24,39,.76);border:1px solid #ffffff55;box-shadow:0 1px 5px #0006;flex:none;font-weight:700}
-.island-panel[data-area-panel="0"],.island-panel[data-area-panel="7"]{--field-art:url('./assets/field-greengrass.png')}
-.island-panel[data-area-panel="1"],.island-panel[data-area-panel="8"]{--field-art:url('./assets/field-cyan.png')}
+.island-panel[data-area-panel="0"]{--field-art:url('./assets/field-greengrass.png')}
+.island-panel[data-area-panel="7"]{--field-art:url('./assets/field-greengrass-ex.jpg')}
+.island-panel[data-area-panel="1"]{--field-art:url('./assets/field-cyan.png')}
+.island-panel[data-area-panel="8"]{--field-art:url('./assets/field-cyan-ex.jpg')}
 .island-panel[data-area-panel="2"]{--field-art:url('./assets/field-taupe.png')}
 .island-panel[data-area-panel="3"]{--field-art:url('./assets/field-snowdrop.png')}
 .island-panel[data-area-panel="4"]{--field-art:url('./assets/field-lapis.png')}
 .island-panel[data-area-panel="5"]{--field-art:url('./assets/field-gold.png')}
-.island-panel[data-area-panel="6"]{--field-art:url('./assets/field-amber.png')}
+.island-panel[data-area-panel="6"]{--field-art:url('./assets/field-amber-landscape.jpg')}
 .island-panel[data-area-panel="7"] .island-heading,.island-panel[data-area-panel="8"] .island-heading{background-image:linear-gradient(90deg,rgba(18,15,55,.91),rgba(35,29,81,.57),rgba(34,28,72,.58)),var(--field-art,none);box-shadow:inset 0 0 0 2px #b9abf777}
 .island-panel[data-area-panel="7"] .island-heading>span,.island-panel[data-area-panel="8"] .island-heading>span{border-color:#c3b2f6}
 
