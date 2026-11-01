@@ -154,14 +154,28 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .pokemon-icon:not(.broken) .fallback{display:none}
 .pokemon-icon.broken .fallback{display:flex}
 
-/* v0.1.17: Center Pokémon details; retain settings at the bottom.
-   fit-content plus auto margins centers native dialog; max-height scrolls. */
-#details.bottom-sheet{
-  inset:0;
-  margin:auto;
+/* v0.1.18: Detail modal is NOT a bottom sheet.  Absolute midpoint
+   anchoring avoids relying on auto-margin dialog layout on Android.
+   The settings dialog remains the only .bottom-sheet. */
+.center-dialog{
+  position:fixed;
+  top:50dvh;
+  left:50%;
+  bottom:auto;
+  right:auto;
+  transform:translate(-50%,-50%);
+  margin:0;
   width:min(calc(100% - 24px),620px);
-  height:fit-content;
   max-height:min(calc(100dvh - 32px),880px);
-  border-radius:22px;
+  height:auto;
+  box-sizing:border-box;
+  overflow-y:auto;
   overscroll-behavior:contain;
+  border:1px solid #466078;
+  border-radius:22px;
+  color:var(--ink);
+  background:#1a2b3d;
+  padding:20px 18px;
+  box-shadow:0 -8px 30px #0008;
 }
+.center-dialog::backdrop{background:#010913b8;backdrop-filter:blur(4px)}

@@ -5,28 +5,30 @@ const css=fs.readFileSync(path.join(root,'styles.css'),'utf8');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const sw=fs.readFileSync(path.join(root,'sw.js'),'utf8');
-function block(selector){
- // Check a whole selector, allowing whitespace before '{' but not accidentally
- // matching '.bottom-sheet' inside the higher-specificity '#details' selector.
- const pattern=selector==='.bottom-sheet'
-   ? /(?:^|\n)\.bottom-sheet\s*\{[^{}]*\}/
-   : /(?:^|\n)#details\.bottom-sheet\s*\{[^{}]*\}/;
- const match=css.match(pattern);
- assert.ok(match,'missing CSS selector: '+selector);
- return match[0];
+function selector(cssSelector){
+ const start=css.indexOf(cssSelector+'{');
+ assert.ok(start>=0,'missing selector: '+cssSelector);
+ const end=css.indexOf('}',start);
+ assert.ok(end>start,'unterminated selector: '+cssSelector);
+ return css.slice(start,end+1);
 }
-const original=block('.bottom-sheet');
-assert.match(original,/position\s*:\s*fixed/);
-assert.match(original,/bottom\s*:\s*0/,'settings must remain anchored at bottom');
-assert.match(original,/overflow-y\s*:\s*auto/);
-const modal=block('#details.bottom-sheet');
-assert.match(modal,/inset\s*:\s*0/);
-assert.match(modal,/margin\s*:\s*auto/);
-assert.match(modal,/height\s*:\s*fit-content/);
-assert.match(modal,/max-height\s*:\s*min\(\s*calc\(100dvh\s*-\s*32px\),\s*880px\s*\)/);
-assert.match(modal,/border-radius\s*:\s*22px/);
-assert.ok(html.includes('<dialog class="bottom-sheet" id="details">'));
+const bottom=selector('.bottom-sheet ');
+assert.match(bottom,/position\s*:\s*fixed/);
+assert.match(bottom,/bottom\s*:\s*0/);
+const center=selector('.center-dialog');
+assert.match(center,/position\s*:\s*fixed/);
+assert.match(center,/top\s*:\s*50dvh/);
+assert.match(center,/left\s*:\s*50%/);
+assert.match(center,/bottom\s*:\s*auto/);
+assert.match(center,/right\s*:\s*auto/);
+assert.match(center,/transform\s*:\s*translate\(-50%,-50%\)/);
+assert.match(center,/margin\s*:\s*0/);
+assert.match(center,/max-height\s*:\s*min\(calc\(100dvh - 32px\),880px\)/);
+assert.match(center,/overflow-y\s*:\s*auto/);
+assert.match(css,/\.center-dialog::backdrop\s*\{/);
+assert.doesNotMatch(css,/#details\.bottom-sheet\s*\{/,'legacy bottom-sheet selector must be removed');
+assert.ok(html.includes('<dialog class="center-dialog" id="details">'));
 assert.ok(html.includes('<dialog class="bottom-sheet" id="settings-dialog">'));
 assert.match(app,/if\(action==='pokemon'\)\{state\.selected=b\.dataset\.key;details\(\);dialogOpen\('#details'\);activateDetailSprite\(\)\}/);
-assert.match(sw,/gense-note-shell-v0\.1\.17/);
-console.log('PASS: centered details, limited height/scroll, settings stays bottom, image loading unchanged');
+assert.match(sw,/gense-note-shell-v0\.1\.18/);
+console.log('PASS: detail modal structurally separate, anchored at 50dvh and 50%, settings remains bottom, existing image handling unchanged');

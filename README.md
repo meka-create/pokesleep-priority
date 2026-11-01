@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.17 – GitHub Pages
+# 厳選ノート v0.1.18 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,14 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.18 — 詳細モーダルを独立した中央配置へ変更
+
+- Android PWAで前回の「CSS上書きによる中央配置」が機能しなかったため、詳細モーダルから下部シート用の `bottom-sheet` クラスを除去。
+- 独立した `center-dialog` により、画面の中央座標（`top:50dvh; left:50%; transform:translate(-50%,-50%)`）を直接指定し、下部固定指定と完全分離。
+- 画面幅に応じた左右余白と高さ制限、内部スクロールを維持。設定・バックアップダイアログは下部表示を保持。
+- CSS静的テストに加え、複数の画面サイズとスクロール位置のブラウザ表示試験を実施。Android実機での最終判定は別途必要。
+- 保存データ、画像表示、画像キャッシュ、評価、島マスター、自動更新の仕様は変更なし。
 
 ## v0.1.17 — 詳細モーダルを画面中央へ修正
 
