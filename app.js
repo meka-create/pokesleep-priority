@@ -119,7 +119,10 @@
     // Remove queued elements from replaced sections; in-flight requests can end
     // naturally (or on timeout) without holding onto new DOM elements.
     for(const img of document.querySelectorAll('img[data-sprite-src]')){
-      if(img.dataset.spriteState)return;
+      // Resume requests that were dropped while this tab was detached.
+      if(!img.hasAttribute('src')&&['queued','checking'].includes(img.dataset.spriteState)
+         &&!imageWaiting.includes(img))delete img.dataset.spriteState;
+      if(img.dataset.spriteState)continue;
       if(spriteObserver)spriteObserver.observe(img);else enqueueSprite(img);
     }
   }
@@ -373,6 +376,7 @@
       el.setAttribute('aria-current',active?'page':'false');
     }
     if(newPanel)renderResults();
+    else discoverSprites(); // Resume incomplete icons when reattaching a cached tab.
     updateRatedCounter();
   }
   function dialogOpen(id){const d=$(id);if(!d.open)d.showModal()}
@@ -431,6 +435,8 @@
         }
       }
     }
+    // Ratings displayed by the detached search panel are now stale.
+    tabPanels.delete('search');
     const counter=$('#rated-count');if(counter)counter.textContent=countRated();
   }
   function switchTab(tab){
