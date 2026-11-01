@@ -140,12 +140,21 @@ def assemble(pokemon_data, translations, encounter_records, previous):
         else: named=translations.get(en,ALIASES.get(en,en))
         sleep=SLEEP_EN.get(entry.get('sleepType'),sleep_by_key.get(key,local.get('sleep','不明')))
         islands=sorted(slots.get(key,set()))
-        if not islands and not encounter_records:
-            islands=list(local.get('islands',[]))
+        # A partial wiki scrape must never silently unmap a previously
+        # confirmed Pokémon (including time-limited/event appearances).
+        if not islands and local.get('islands'):
+            islands=list(local['islands'])
         item={'key':key,'id':num,'name':named,'sleep':sleep,'islands':islands,'form':form}
         sprite_id=REGIONAL_SPRITE_IDS.get(key,local.get('spriteId'))
         if isinstance(sprite_id,int) and sprite_id>0:item['spriteId']=sprite_id
         output.append(item)
+    # A temporary omission in the upstream species list must NOT remove a
+    # user's existing Pokémon from the built-in master. Keep it until a
+    # separately verified migration explicitly retires that stable key.
+    for key, item in prior.items():
+        if key not in known:
+            output.append(item)
+            known.add(key)
     output.sort(key=lambda p:(p['id'],p['key']))
     unique_with_areas=sum(bool(x['islands']) for x in output)
     coverage={i for p in output for i in p['islands']}
