@@ -1,5 +1,5 @@
 /* Offline shell + rate-limited PokeAPI sprite cache; no personal data is cached. */
-const SHELL_CACHE='gense-note-shell-v0.1.25';
+const SHELL_CACHE='gense-note-shell-v0.1.26';
 const SPRITE_CACHE='gense-note-sprites-v1';
 const SPRITE_META='gense-note-sprite-meta-v1';
 const SPRITE_ROOT='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -139,13 +139,16 @@ self.addEventListener('fetch',event=>{
     }).catch(()=>caches.match('./data/master.json')));
     return;
   }
-  // Navigation and CSS must be network-first. The former cache-first rule
+  // Navigation, app scripts, and CSS must be network-first. The former cache-first rule
   // (especially ignoreSearch:true) could serve an old field crop indefinitely,
   // even after users cleared the HTTP browser cache.
   const isDocument=req.mode==='navigate'||url.pathname.endsWith('/index.html');
   const isCSS=url.pathname.endsWith('/styles.css');
-  if(isDocument||isCSS){
-    const cacheKey=isCSS?'./styles.css':'./index.html';
+  const isAppScript=url.pathname.endsWith('/app.js');
+  const isSeedScript=url.pathname.endsWith('/data/seed-data.js');
+  if(isDocument||isCSS||isAppScript||isSeedScript){
+    const cacheKey=isCSS?'./styles.css':isAppScript?'./app.js'
+      :isSeedScript?'./data/seed-data.js':'./index.html';
     event.respondWith((async()=>{
       try{
         const response=await fetch(req,{cache:'no-store'});
