@@ -63,6 +63,8 @@ function fakeDatabase(initial,failAt=0){
   let reRendered=0,closed=0,errorText='';
   const restoreContext=vm.createContext({
     state,KEYS:{ratings:'r',overrides:'i'},Map,Object,JSON,RegExp,Error,
+    GRADE_IDS:new Set(['star','double','circle','triangle','cross']),
+    AREAS:Array.from({length:9},(_,i)=>'島'+i),
     confirm:()=>true,toast:txt=>{errorText=txt},
     dialogClose:()=>closed++,render:()=>reRendered++,
     setLocal:(key,val)=>{local.set(key,JSON.stringify(val));return true},
