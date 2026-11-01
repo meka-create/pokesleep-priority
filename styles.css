@@ -153,3 +153,15 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 /* Fallback is allowed only when there is no working image. */
 .pokemon-icon:not(.broken) .fallback{display:none}
 .pokemon-icon.broken .fallback{display:flex}
+
+/* v0.1.17: Center Pokémon details; retain settings at the bottom.
+   fit-content plus auto margins centers native dialog; max-height scrolls. */
+#details.bottom-sheet{
+  inset:0;
+  margin:auto;
+  width:min(calc(100% - 24px),620px);
+  height:fit-content;
+  max-height:min(calc(100dvh - 32px),880px);
+  border-radius:22px;
+  overscroll-behavior:contain;
+}

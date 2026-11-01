@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.16 – GitHub Pages
+# 厳選ノート v0.1.17 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,13 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.17 — 詳細モーダルを画面中央へ修正
+
+- ポケモン詳細画面のみ画面中央に配置。下端に固定する設定画面は従来のままです。
+- 幅は最大620px、画面左右に余白を取り、高さが不足する画面ではモーダル内部をスクロールできます。
+- 画像・評価操作・ユーザーデータ保存・フィールド背景・自動更新時刻（04:17 JSTごろ）は変更しません。
+- 5種類の画面サイズを使用したヘッドレスChromiumで中央表示と高さ制限を検証し、GitHub Actionsへ回帰テストを追加しました。
 
 ## v0.1.16 — 最終監査追補（2026-11-01）
 
