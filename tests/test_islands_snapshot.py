@@ -1,0 +1,54 @@
+"""Regression tests for embedded island master and form-safe update source."""
+import json
+import sys
+import unittest
+from pathlib import Path
+ROOT=Path(__file__).resolve().parents[1]
+sys.path.insert(0,str(ROOT/'tools'))
+from availability import map_form, master_from_availability, FIELD_KEYS
+
+class IslandSnapshotTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.master=json.loads((ROOT/'data/master.json').read_text('utf-8'))
+        cls.by_key={p['key']:p for p in cls.master['pokemon']}
+
+    def test_snapshot_complete_and_matches_offline_seed(self):
+        m=self.master
+        self.assertTrue(m['areasReady'])
+        self.assertEqual(len(m['areas']),9)
+        self.assertGreaterEqual(len(m['pokemon']),252)
+        self.assertGreaterEqual(sum(bool(p['islands']) for p in m['pokemon']),244)
+        self.assertEqual(set(range(9)),set(i for p in m['pokemon'] for i in p['islands']))
+        js=(ROOT/'data/seed-data.js').read_text('utf-8').strip()
+        self.assertTrue(js.startswith('window.__SEED_MASTER__='))
+        self.assertEqual(json.loads(js.removeprefix('window.__SEED_MASTER__=').removesuffix(';')),m)
+
+    def test_current_official_misdreavus_fields(self):
+        self.assertEqual(self.by_key['200:default']['sleep'],'うとうと')
+        self.assertEqual(self.by_key['429:default']['sleep'],'うとうと')
+        self.assertEqual(self.by_key['200:default']['islands'],[0,3,5,7])
+        self.assertEqual(self.by_key['429:default']['islands'],[0,3,5,7])
+
+    def test_forms_do_not_inherit_other_region(self):
+        self.assertEqual(self.by_key['37:Alola']['islands'],[3,7])
+        self.assertEqual(self.by_key['37:default']['islands'],[0,2,6,7])
+        self.assertEqual(self.by_key['194:Paldea']['islands'],[0,2,7])
+        self.assertEqual(self.by_key['194:default']['islands'],[0,1])
+
+    def test_availability_form_resolution(self):
+        self.assertEqual(len(FIELD_KEYS),9)
+        self.assertEqual(map_form({'id':'alolan_vulpix'}),'Alola')
+        self.assertEqual(map_form({'id':'paldean_wooper'}),'Paldea')
+        self.assertEqual(map_form({'id':'pumpkaboo_jumbo'}),'Jumbo')
+        self.assertEqual(map_form({'id':'toxtricity_low_key_form'}),'Low Key')
+        self.assertEqual(map_form({'id':'ditto_mew'}),'default')
+        self.assertEqual(map_form({'id':'clodsire'}),'Paldea')
+
+    def test_ratings_storage_independent_from_master(self):
+        app=(ROOT/'app.js').read_text('utf-8')
+        self.assertIn("ratings:'gense-note-ratings-v1'",app)
+        self.assertIn("overrides:'gense-note-islands-v1'",app)
+        self.assertIn("if(!next.areasReady&&old.areasReady)",app)
+
+if __name__=='__main__': unittest.main()

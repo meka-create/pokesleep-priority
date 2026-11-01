@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#111c2c">
+  <meta name="description" content="ポケモンスリープの厳選優先度を、図鑑で登録してフィールドごとに一覧できる個人用PWA。">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="icon" href="./assets/icon-192.png">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./styles.css">
+  <title>厳選ノート | Pokémon Sleep</title>
+  <script src="./data/seed-data.js" defer></script>
+  <script src="./app.js" defer></script>
+</head>
+<body>
+<div class="shell">
+  <header class="app-header">
+    <div class="brandmark" aria-hidden="true">☾</div>
+    <div class="brandtext"><span class="eyebrow">POKÉMON SLEEP</span><h1>厳選ノート</h1></div>
+    <button class="icon-button" type="button" data-action="settings" aria-label="設定・バックアップ" title="設定">⚙</button>
+  </header>
+  <main id="main" class="main" aria-live="polite"></main>
+  <nav class="bottom-nav" aria-label="メインメニュー">
+    <button type="button" class="nav-button active" data-action="tab" data-tab="dex"><span aria-hidden="true">▦</span><span>図鑑</span></button>
+    <button type="button" class="nav-button" data-action="tab" data-tab="search"><span aria-hidden="true">⌕</span><span>評価検索</span></button>
+  </nav>
+</div>
+<dialog class="bottom-sheet" id="details"><div id="details-body"></div></dialog>
+<dialog class="bottom-sheet" id="settings-dialog"><div id="settings-body"></div></dialog>
+<input type="file" id="icon-input" accept="image/png,image/jpeg,image/webp" hidden>
+<input type="file" id="restore-input" accept="application/json,.json" hidden>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+</body>
+</html>
