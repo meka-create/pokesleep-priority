@@ -49,7 +49,7 @@ assert.ok(iconLoader.includes('openCursor()'));
 assert.ok(!iconLoader.includes('getAllKeys()'));
 assert.ok(!iconLoader.includes('render()'));
 const start=section('  async function start(){',"  if('serviceWorker'in navigator");
-assert.match(start,/await loadIcons\(\);\s*render\(\);/);
+assert.match(start,/await loadIcons\(\);\s*await warmStartupSprites\(\);\s*render\(\);/);
 assert.ok(!js.includes('render();loadIcons();refreshMaster(false)'));
 assert.ok(js.includes('const retainedCards=new Map()'));
 assert.ok(js.includes('fresh.replaceWith(previous)'));
