@@ -24,10 +24,24 @@
   // Bundled 9-island seed should immediately upgrade an older species-only
   // cache, including on an offline launch. Preserve any newly added species.
   const base=validMaster(savedMaster)?savedMaster:masterSeed;
-  const bundled=validMaster(masterSeed)&&masterSeed.areasReady&&!base.areasReady;
-  const master=bundled?{
-    ...masterSeed,pokemon:[...masterSeed.pokemon,...base.pokemon.filter(p=>!masterSeed.pokemon.some(x=>x.key===p.key))]
-  }:base;
+  const baseStamp=Date.parse(base?.updatedAt||''),bundleStamp=Date.parse(masterSeed?.updatedAt||'');
+  const bundled=validMaster(masterSeed)&&masterSeed.areasReady
+    &&(!base.areasReady||(Number.isFinite(bundleStamp)&&
+      (!Number.isFinite(baseStamp)||bundleStamp>=baseStamp)));
+  const master= bundled?(()=>{
+    const priorByKey=new Map(base.pokemon.map(p=>[p.key,p]));
+    const freshKeys=new Set(masterSeed.pokemon.map(p=>p.key));
+    return {
+      ...masterSeed,
+      pokemon:[
+        ...masterSeed.pokemon.map(p=>{
+          const prior=priorByKey.get(p.key);
+          return prior?.islands?.length&&!p.islands?.length?{...p,islands:prior.islands}:p;
+        }),
+        ...base.pokemon.filter(p=>!freshKeys.has(p.key))
+      ]
+    };
+  })():base;
   const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};
   if(!['dex','search'].includes(prefs.tab))prefs.tab='dex';
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
