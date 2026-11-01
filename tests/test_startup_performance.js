@@ -33,6 +33,16 @@ assert.deepEqual(Array.from(state.master.pokemon[0].islands),[0,1],
 
 assert.match(vm.runInContext('masterCheckSlot()',ctx),/^2026-11-01-(pre|post)$/);
 assert.equal(vm.runInContext('shouldCheckMaster(true)',ctx),true);
+let savedCheck={slot:vm.runInContext('masterCheckSlot()',ctx),time:Date.now()-60*60*1000,ok:true};
+ctx.fromLocal=()=>savedCheck;
+assert.equal(vm.runInContext('shouldCheckMaster(false)',ctx),false,
+  'recent successful master check should be reused');
+savedCheck.time=Date.now()-7*60*60*1000;
+assert.equal(vm.runInContext('shouldCheckMaster(false)',ctx),true,
+  'scheduled update delayed beyond the first check must be retried after six hours');
+savedCheck={slot:vm.runInContext('masterCheckSlot()',ctx),time:Date.now()-31*60*1000,ok:false};
+assert.equal(vm.runInContext('shouldCheckMaster(false)',ctx),true,
+  'failed master checks must retry after 30 minutes');
 const iconLoader=section('  async function loadIcons(){','  async function setIcon(key,value)');
 assert.ok(iconLoader.includes('openCursor()'));
 assert.ok(!iconLoader.includes('getAllKeys()'));
