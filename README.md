@@ -1,4 +1,4 @@
-# 厳選ノート v0.1.14 – GitHub Pages
+# 厳選ノート v0.1.15 – GitHub Pages
 
 - Daily scheduled master validation at 19:17 UTC (04:17 JST, next calendar day); Actions may delay schedules.
 - Sources: pokesleep-tool, sleep-dex and, when validated, the Pokémon Sleep community wiki.
@@ -7,6 +7,17 @@
 - The first run copies the user-supplied eight PNG icons from a PINNED pokesleep-odds commit, verifies SHA-256 and saves them in this repo. Later changes to the source repo cannot affect the icons here.
 - User ratings and custom icons live on the local device and are never overwritten by the update.
 - After 35 days without repository commits, the scheduled run writes a tiny `data/schedule-keepalive.txt` commit to reduce the risk of GitHub auto-disabling inactive public repository schedules; GitHub-run delays still remain possible.
+
+## v0.1.15 — 最終監査・データ保護強化（2026-11-01）
+
+- IndexedDBの保存完了を、個々のリクエスト成功ではなくトランザクション完了時に確定するよう修正。
+- バックアップ復元の画像入れ替えを単一トランザクションに変更。途中失敗時に既存画像を保護し、評価・島設定も元に戻す処理を導入。
+- 評価の変更・全件消去・島の手動変更は、保存失敗時に画面上の変更を確定しないよう修正。
+- 上流のPokémonデータが一時的に欠落しても、既存個体と確定済みの島データを保持。端末側に保存された新しいマスターを古い公開データで上書きしない。
+- 地域別のテストを固定完全一致から既知の出現島を含む検証へ変更し、正当な新フィールド追加で毎朝の定期更新が止まらないよう改善。
+- 全フィールド背景7枚とアプリアイコン8枚に対するPNG破損・欠落検査、復元中断の模擬テストをCIに追加。
+- Service Workerを更新して新しいアプリコードを配信し、既存の標準ポケモン画像キャッシュと端末の評価・画像ストレージは維持。
+- 実機受入・定期スケジュール翌朝の実際の起動・外部データソースの将来の稼働は、テスト結果と区別して扱います。
 
 ## v0.1.14 — 透過ポケモン画像の背景カタカナを確実に除去
 
