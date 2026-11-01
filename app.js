@@ -324,7 +324,16 @@
     if($('#details').open)activateDetailSprite();
   }
   function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・島の手動修正・登録したアイコンをJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
-  function updateGrade(k,g){if(g==='none')delete state.ratings[k];else state.ratings[k]=g;save();render();dialogClose('#details');toast(g==='none'?'未評価に戻しました':`厳選優先度を ${gradeInfo(g).symbol} に変更しました`)}
+  function updateGrade(k,g){
+    const previous=grade(k);
+    if(g==='none')delete state.ratings[k];else state.ratings[k]=g;
+    if(!setLocal(KEYS.ratings,state.ratings)){
+      if(previous==='none')delete state.ratings[k];else state.ratings[k]=previous;
+      return;
+    }
+    render();dialogClose('#details');
+    toast(g==='none'?'未評価に戻しました':`厳選優先度を ${gradeInfo(g).symbol} に変更しました`);
+  }
   function quickRate(button){
     const k=button.dataset.key,requested=button.dataset.grade;
     if(!GRADE_IDS.has(requested)||!getPokemon().some(p=>p.key===k))return;
@@ -359,7 +368,34 @@
   }
   function switchTab(tab){if(!['dex','search'].includes(tab))return;state.prefs.tab=tab;state.prefs.search='';save();render();window.scrollTo({top:0,behavior:'instant'})}
   async function openDB(){if(!('indexedDB'in window))throw Error('IndexedDB is unavailable');if(!dbPromise)dbPromise=new Promise((resolve,reject)=>{const req=indexedDB.open('gense-note-icons',1);req.onupgradeneeded=()=>req.result.createObjectStore('icons');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)});return dbPromise}
-  async function dbAction(mode,action){const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction('icons',mode);const store=tx.objectStore('icons');let req;try{req=action(store)}catch(e){reject(e);return}if(req){req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)}else {tx.oncomplete=()=>resolve();tx.onerror=()=>reject(tx.error)}})}
+  async function dbAction(mode,action){
+    const db=await openDB();
+    return new Promise((resolve,reject)=>{
+      const tx=db.transaction('icons',mode);
+      let result;
+      tx.oncomplete=()=>resolve(result); // A successful request is NOT a committed transaction.
+      tx.onerror=()=>reject(tx.error||Error('Icon transaction failed'));
+      tx.onabort=()=>reject(tx.error||Error('Icon transaction aborted'));
+      try{
+        const request=action(tx.objectStore('icons'));
+        if(request)request.onsuccess=()=>{result=request.result};
+      }catch(error){try{tx.abort()}catch{}reject(error)}
+    });
+  }
+  async function replaceIconsAtomically(entries){
+    const db=await openDB();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction('icons','readwrite');
+      tx.oncomplete=()=>resolve();
+      tx.onerror=()=>reject(tx.error||Error('Icon restore failed'));
+      tx.onabort=()=>reject(tx.error||Error('Icon restore aborted'));
+      try{
+        const store=tx.objectStore('icons');
+        store.clear();
+        for(const [key,value] of entries)store.put(value,key);
+      }catch(error){try{tx.abort()}catch{}reject(error)}
+    });
+  }
   async function loadIcons(){
     try{
       const db=await openDB();
@@ -388,12 +424,37 @@
   function backup(){downloadJSON({app:'pokesleep-priority',version:1,date:new Date().toISOString(),ratings:state.ratings,overrides:state.overrides,icons:Object.fromEntries(state.icons)},`gense-note-backup-${nowJST()}.json`);toast('バックアップファイルを保存しました')}
   function sanitizedRatings(obj){const safe={};if(obj&&typeof obj==='object'&&!Array.isArray(obj)){for(const [k,v] of Object.entries(obj))if(/^\d+:[A-Za-z0-9 _-]+$/.test(k)&&GRADE_IDS.has(v))safe[k]=v}return safe}
   function sanitizedOverrides(obj){const safe={};if(obj&&typeof obj==='object'&&!Array.isArray(obj)){for(const [k,v] of Object.entries(obj))if(/^\d+:[A-Za-z0-9 _-]+$/.test(k)&&Array.isArray(v))safe[k]=[...new Set(v.filter(n=>Number.isInteger(n)&&n>=0&&n<9))].sort((a,b)=>a-b)}return safe}
-  async function restore(file){if(!file||file.size>30*1024*1024){toast('30MB以下のJSONを指定してください');return}try{const input=JSON.parse(await file.text());if(input.app!=='pokesleep-priority'||input.version!==1)throw Error('このアプリのバックアップではありません');const ratings=sanitizedRatings(input.ratings),overrides=sanitizedOverrides(input.overrides);if(!confirm('現在の厳選優先度・手動設定をバックアップの内容に置き換えます。続けますか？'))return;
-    // Validate icon values before modifying preferences.
-    const candidates=Object.entries(input.icons||{}).filter(([k,v])=>/^\d+:[A-Za-z0-9 _-]+$/.test(k)&&typeof v==='string'&&v.length<=450000&&/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(v));
-    state.ratings=ratings;state.overrides=overrides;save();try{await dbAction('readwrite',s=>s.clear());state.icons.clear();for(const [k,v] of candidates){await dbAction('readwrite',s=>s.put(v,k));state.icons.set(k,v)}}catch(e){console.warn('Restore icons failed',e);toast('評価は復元しました。画像の復元は一部失敗しました')}
-    dialogClose('#settings-dialog');render();toast('バックアップを復元しました');
-  }catch(e){toast(`復元失敗：${e.message||'JSON形式を確認してください'}`)}}
+  async function restore(file){
+    if(!file)return;
+    if(file.size>30*1024*1024){toast('30MB以下のJSONを指定してください');return}
+    try{
+      const input=JSON.parse(await file.text());
+      if(input.app!=='pokesleep-priority'||input.version!==1)throw Error('このアプリのバックアップではありません');
+      const ratings=sanitizedRatings(input.ratings),overrides=sanitizedOverrides(input.overrides);
+      const candidates=Object.entries(input.icons||{}).filter(([key,value])=>
+        /^\d+:[A-Za-z0-9 _-]+$/.test(key)&&typeof value==='string'&&value.length<=450000
+        &&/^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(value));
+      if(!confirm('現在の厳選優先度・手動設定をバックアップの内容に置き換えます。続けますか？'))return;
+      const formerRatings=state.ratings,formerOverrides=state.overrides;
+      if(!setLocal(KEYS.ratings,ratings))throw Error('評価を保存できませんでした');
+      if(!setLocal(KEYS.overrides,overrides)){
+        setLocal(KEYS.ratings,formerRatings);
+        throw Error('島設定を保存できませんでした');
+      }
+      try{
+        // One transaction: either ALL icons are replaced or NONE are.
+        // On failure IndexedDB rolls back clear() and all put() calls.
+        await replaceIconsAtomically(candidates);
+      }catch(error){
+        setLocal(KEYS.ratings,formerRatings);
+        setLocal(KEYS.overrides,formerOverrides);
+        throw error;
+      }
+      state.ratings=ratings;state.overrides=overrides;
+      state.icons=new Map(candidates);
+      dialogClose('#settings-dialog');render();toast('バックアップを復元しました');
+    }catch(error){toast(`復元失敗：${error.message||'JSON形式を確認してください'}`)}
+  }
   async function fetchJSON(url){const res=await fetch(url,{cache:'no-store',signal:AbortSignal.timeout(14000)});if(!res.ok)throw Error(`HTTP ${res.status}`);return res.json()}
   function mergeMaster(next){if(!validMaster(next))return 0;const old=state.master;let updated=0;
     const oldMap=new Map(old.pokemon.map(p=>[p.key,p]));const newer=next.pokemon.map(p=>{
@@ -470,11 +531,31 @@
     if(action==='sync')await refreshMaster(true);
     if(action==='backup')backup();
     if(action==='restore')$('#restore-input').click();
-    if(action==='clear-ratings'){if(confirm('厳選優先度をすべて消去します。バックアップがない場合、元に戻せません。実行しますか？')){state.ratings={};save();render();settings();toast('評価をすべて消去しました')}}
+    if(action==='clear-ratings'){
+      if(confirm('厳選優先度をすべて消去します。バックアップがない場合、元に戻せません。実行しますか？')){
+        if(setLocal(KEYS.ratings,{})){
+          state.ratings={};render();settings();toast('評価をすべて消去しました');
+        }
+      }
+    }
   });
   document.addEventListener('change',ev=>{
     const b=ev.target;
-    if(b.dataset.action==='island-toggle'&&state.selected){const p=selected(),idx=Number(b.dataset.island);if(!p||!Number.isInteger(idx))return;let islands=Array.isArray(state.overrides[p.key])?[...state.overrides[p.key]]:[...p.islands];if(b.checked&&!islands.includes(idx))islands.push(idx);if(!b.checked)islands=islands.filter(i=>i!==idx);state.overrides[p.key]=islands.sort((a,b)=>a-b);save();render()}
+    if(b.dataset.action==='island-toggle'&&state.selected){
+      const p=selected(),idx=Number(b.dataset.island);
+      if(!p||!Number.isInteger(idx))return;
+      const previous=state.overrides[p.key],hadOverride=Object.hasOwn(state.overrides,p.key);
+      let islands=Array.isArray(previous)?[...previous]:[...p.islands];
+      if(b.checked&&!islands.includes(idx))islands.push(idx);
+      if(!b.checked)islands=islands.filter(i=>i!==idx);
+      state.overrides[p.key]=islands.sort((a,b)=>a-b);
+      if(!setLocal(KEYS.overrides,state.overrides)){
+        if(hadOverride)state.overrides[p.key]=previous;else delete state.overrides[p.key];
+        b.checked=!b.checked;
+        return;
+      }
+      render();
+    }
   });
   let searchRenderTimer=null;
   document.addEventListener('input',ev=>{
