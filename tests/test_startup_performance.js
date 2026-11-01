@@ -11,7 +11,7 @@ const master={schema:1,areasReady:true,updatedAt:'2026-11-01',pokemon:[{id:37,ke
 let renders=0,regionChecks=0,saves=0;
 const state={master:JSON.parse(JSON.stringify(master))};
 const ctx=vm.createContext({state,KEYS:{master:'master'},JSON,Boolean,Map,Date,Intl,
-  validMaster:()=>true,setLocal:()=>{saves++;},render:()=>{renders++;},
+  validMaster:()=>true,setLocal:()=>{saves++;return true},render:()=>{renders++;},
   resolveRegionalSprites:()=>{regionChecks++;},$:()=>({open:false}),settings:()=>{},
   nowJST:()=>'2026-11-01',fromLocal:()=>({})
 });
