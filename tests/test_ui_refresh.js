@@ -30,8 +30,9 @@ for(const landscape of ['amber-landscape','greengrass-ex','cyan-ex']){
 }
 assert.ok(css.includes('data-area-panel="7"]{--field-art:url(\'./assets/field-greengrass-ex.jpg\')'));
 assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cyan-ex.jpg\')'));
-assert.ok(css.includes('.island-panel[data-area-panel="1"] .island-heading{background-position:center,center bottom}'),"Cyan Beach should show ocean at bottom");
-assert.ok(!css.includes('.island-panel[data-area-panel="8"] .island-heading{background-position:center,center bottom}'),"EX cropping must remain independent");
+assert.ok(css.includes('background-position:center,center 48%'),"all ordinary islands share their original crop");
+assert.ok(!css.includes('.island-panel[data-area-panel="1"] .island-heading{background-position'),"Cyan Beach should use shared crop, not a one-off override");
+assert.ok(!css.includes('.island-panel[data-area-panel="8"] .island-heading{background-position'),"EX must remain independent");
 assert.ok(app.includes('const retainedCards=new Map()'));
 assert.ok(app.includes('function patchResults(el,markup)'));
 assert.ok(app.includes('patchResults(el,content)'));
