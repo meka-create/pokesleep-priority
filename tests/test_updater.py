@@ -63,6 +63,24 @@ class UpdateMasterTests(unittest.TestCase):
         self.assertEqual(new['name'],'シンポケ')
         self.assertEqual(new['islands'],[1])
 
+    def test_partial_upstream_cannot_drop_previous_pokemon_or_islands(self):
+        seed=make_seed()
+        previous={**seed, 'pokemon':[dict(p) for p in seed['pokemon']]}
+        missing=previous['pokemon'][0]
+        missing['islands']=[4]
+        event=previous['pokemon'][-1]
+        event['islands']=[3]
+        # Substantial otherwise valid source: 9 islands and >130 matches.
+        species=[{'id':p['id'],'name':p['name'],'form':p['form'],'sleepType':'dozing'}
+                 for p in seed['pokemon'][1:]]
+        records={(p['id'],m.clean(p['name']),'うとうと',i)
+                 for i in range(9) for p in seed['pokemon'][1:161]}
+        result=m.assemble(species,{},records,previous)
+        by_key={p['key']:p for p in result['pokemon']}
+        self.assertEqual(len(result['pokemon']),len(previous['pokemon']))
+        self.assertEqual(by_key[missing['key']]['islands'],[4])
+        self.assertEqual(by_key[event['key']]['islands'],[3])
+
     def test_reject_partial_master(self):
         seed=make_seed()
         mons=[{'id':x['id'],'name':x['name'],'sleepType':'dozing','form':x['form']} for x in seed['pokemon']]

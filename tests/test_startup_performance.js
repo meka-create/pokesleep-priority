@@ -21,9 +21,16 @@ merge({...master,updatedAt:'2026-11-02',pokemon:master.pokemon.map(x=>({...x}))}
 assert.equal(renders,0,'unchanged master must not redraw');
 assert.equal(regionChecks,0);
 assert.equal(saves,1);
-merge({...master,pokemon:[{...master.pokemon[0],islands:[0,1]}]});
+merge({...master,updatedAt:'2026-11-03',pokemon:[{...master.pokemon[0],islands:[0,1]}]});
 assert.equal(renders,1,'new island mapping must redraw');
 assert.equal(regionChecks,1);
+merge({...master,updatedAt:'2026-11-02',pokemon:[{...master.pokemon[0],islands:[0,2]}]});
+assert.equal(renders,1,'older master must not roll back confirmed islands');
+assert.deepEqual(Array.from(state.master.pokemon[0].islands),[0,1]);
+merge({...master,updatedAt:'2026-11-04',pokemon:[{...master.pokemon[0],islands:[]}]});
+assert.deepEqual(Array.from(state.master.pokemon[0].islands),[0,1],
+  'missing island record must preserve previously confirmed assignment');
+
 assert.match(vm.runInContext('masterCheckSlot()',ctx),/^2026-11-01-(pre|post)$/);
 assert.equal(vm.runInContext('shouldCheckMaster(true)',ctx),true);
 const iconLoader=section('  async function loadIcons(){','  async function setIcon(key,value)');
