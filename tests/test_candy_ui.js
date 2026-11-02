@@ -105,11 +105,19 @@ assert.ok(html.includes('マンキーのアメ'));
 assert.ok(!html.includes('ニャースのアメ'));
 state.prefs.candyKind='all';render({});
 assert.ok(html.includes('ロコンのアメ'),"Any-special mode must include regional forms too");
-// A pre-v0.2.4 saved candy type filter must not hide any cards.
+// A single type is attached to the candy itself, never to evolved members.
 state.prefs.candySpecial='all';
 state.prefs.candyType='normal';render({});
-assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,108,
- 'Former type filter may remain in old preferences, but must no longer restrict the list');
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
+ candy.families.filter(f=>f.type==='normal').length);
+assert.ok(html.includes('イーブイのアメ'),'Eevee candy is Normal');
+assert.ok(!html.includes('ロコンのアメ'),'Vulpix candy must not appear in Normal');
+state.prefs.candyType='fire';render({});
+assert.ok(html.includes('ロコンのアメ'),'Vulpix candy is Fire even with an Alolan form');
+assert.ok(!html.includes('イーブイのアメ'),'Eevee candy must not be Fire because of Flareon');
+state.prefs.candyType='water';render({});
+assert.ok(html.includes('ウパーのアメ'),'Wooper candy is Water even with Paldean form');
+state.prefs.candyType='all';
 state.prefs.candySpecial='none';render({});
 assert.ok(!html.includes('フシギダネのアメ'),"No-special mode must exclude Mega/Gmax Pokémon");
 const currentShell=vm.runInContext('candyShell',context);
@@ -122,10 +130,17 @@ assert.ok(currentShell().includes('class="candy-tier-name">優先投入</span>')
 assert.ok(currentShell().includes('class="candy-tier-symbol">◎</span>'));
 assert.ok(!currentShell().includes('candy-tier-legend'),"No detached legend: grade meaning must be inside the button");
 assert.ok(currentShell().includes('特殊要素'));
-assert.ok(!currentShell().includes('data-action="candy-type-filter"'),
- 'Removed candy type filter must not appear');
-assert.ok(!currentShell().includes('アメのタイプ'),
- 'No old type filter label should remain');
+assert.ok(currentShell().includes('data-action="candy-type-trigger"'),
+ 'Custom type picker must open from a button');
+assert.ok(currentShell().includes('アメのタイプ'));
+assert.ok(!currentShell().includes('<select'),
+ 'Do not use a platform native select');
+assert.ok(currentShell().includes('aria-haspopup="listbox"'));
+assert.ok(currentShell().includes('aria-expanded="false"'));
+state.prefs.candyType='grass';
+assert.ok(currentShell().includes('data-type="grass"'));
+assert.ok(currentShell().includes('アメのタイプ：くさ'));
+state.prefs.candyType='all';
 assert.ok(currentShell().includes('全種類'),
  'All special KINDS are distinct from the presence all/any/none selector');
 assert.equal((currentShell().match(/data-action="candy-kind-filter"/g)||[]).length,6,
@@ -163,10 +178,12 @@ assert.equal(migrated({candySpecial:'regional'}).candyKind,'regional');
 assert.equal(migrated({candySpecial:'none'}).candySpecial,'none');
 assert.equal(migrated({candySpecial:'any',candyKind:'gmax'}).candyKind,'gmax');
 assert.equal(migrated({candySpecial:'invalid'}).candySpecial,'all');
-assert.equal(migrated({candyType:'ghost'}).candyType,undefined,
- 'Retired type filter state must be discarded');
-assert.equal(migrated({candyType:'invalid'}).candyType,undefined);
-assert.equal(migrated({}).candyType,undefined);
+assert.equal(migrated({candyType:'ghost'}).candyType,'all',
+ 'Old v0.2.3 filter must not silently reapply on first custom-picker launch');
+assert.equal(migrated({candyType:'fire',candyTypePickerVersion:1}).candyType,'fire',
+ 'Explicit choice made in current custom picker must survive reload');
+assert.equal(migrated({candyType:'invalid',candyTypePickerVersion:1}).candyType,'all');
+assert.equal(migrated({}).candyType,'all');
 const kindEventStart=app.indexOf("    if(action==='candy-kind-filter'");
 const kindEventEnd=app.indexOf("    if(action==='upload-icon')",kindEventStart);
 assert.ok(kindEventStart>0&&kindEventEnd>kindEventStart);
@@ -200,4 +217,4 @@ render({});
 assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
  candy.families.filter(f=>Object.values(f.special).some(x=>x.length)).length,
  '種類「全種類」 includes all families that have some special element only');
-console.log('PASS: 108 colored candy type badges; no type filter; separate special presence All and kind 全種類');
+console.log('PASS: 108 colored candy cards, own-type custom picker/filter, saved choice, two distinct special All controls');
