@@ -8,12 +8,16 @@ const start=app.indexOf('  function candyChoice(id){'),end=app.indexOf('  functi
 assert.ok(start>0&&end>start);
 let html='',saved=null,dialog='',toastMessage='',updates=0,settingsCount=0;
 const state={master:structuredClone(master),candyMaster:candy,candyRatings:{},
-  prefs:{candyTier:'all',candySpecial:'all',candyKind:'all',search:''},selectedCandy:null};
+  prefs:{candyTier:'all',candySpecial:'all',candyKind:'all',candyType:'all',search:''},selectedCandy:null};
+const types={normal:'ノーマル',fire:'ほのお',water:'みず',electric:'でんき',grass:'くさ',
+ ice:'こおり',fighting:'かくとう',poison:'どく',ground:'じめん',flying:'ひこう',
+ psychic:'エスパー',bug:'むし',rock:'いわ',ghost:'ゴースト',dragon:'ドラゴン',
+ dark:'あく',steel:'はがね',fairy:'フェアリー'};
 const levels=[{id:'use',symbol:'◎',label:'優先投入'},{id:'candidate',symbol:'○',label:'投入候補'},
   {id:'hold',symbol:'△',label:'保留'},{id:'save',symbol:'×',label:'温存'}];
 const context=vm.createContext({
  state,KEYS:{candy:'candy'},CANDY_IDS:new Set(levels.map(x=>x.id)),CANDY_LEVELS:levels,
- CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',legendary:'伝説・幻',evolution:'追加進化待ち'},
+ CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',legendary:'伝説・幻',evolution:'追加進化待ち'},CANDY_TYPES:types,
  getPokemon:()=>state.master.pokemon,
  normalize:s=>String(s||'').normalize('NFKC').toLowerCase(),
  iconMarkup:p=>'<div class="pokemon-icon"><img alt="" src="/'+p.id+'.png"></div>',
@@ -31,6 +35,7 @@ assert.equal(families.length,108);
 const bulba=families.find(f=>f.id===1);
 assert.ok(bulba.label.includes('フシギダネ'));
 assert.ok(vm.runInContext('candyBadge',context)(bulba).includes('メガシンカ'));
+assert.ok(vm.runInContext('candyBadge',context)(bulba).includes('くさ'));
 const mew=families.find(f=>f.id===151);
 assert.ok(vm.runInContext('candyBadge',context)(mew).includes('伝説・幻'));
 const mankey=families.find(f=>f.id===56);
@@ -77,6 +82,19 @@ assert.ok(html.includes('マンキーのアメ'));
 assert.ok(!html.includes('ニャースのアメ'));
 state.prefs.candyKind='all';render({});
 assert.ok(html.includes('ロコンのアメ'),"Any-special mode must include regional forms too");
+state.prefs.candySpecial='all';
+state.prefs.candyType='normal';render({});
+assert.ok(html.includes('イーブイのアメ'));
+assert.ok(!html.includes('ロコンのアメ'));
+assert.ok(!html.includes('フシギダネのアメ'));
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
+ candy.families.filter(f=>f.type==='normal').length);
+state.prefs.candyType='fire';render({});
+assert.ok(html.includes('ロコンのアメ'),'Vulpix Candy is Fire');
+assert.ok(!html.includes('イーブイのアメ'),'Eevee Candy is NOT Fire despite Flareon');
+state.prefs.candyType='water';render({});
+assert.ok(html.includes('ウパーのアメ'),'Wooper Candy is Water');
+state.prefs.candyType='all';
 state.prefs.candySpecial='none';render({});
 assert.ok(!html.includes('フシギダネのアメ'),"No-special mode must exclude Mega/Gmax Pokémon");
 const currentShell=vm.runInContext('candyShell',context);
@@ -89,6 +107,9 @@ assert.ok(currentShell().includes('class="candy-tier-name">優先投入</span>')
 assert.ok(currentShell().includes('class="candy-tier-symbol">◎</span>'));
 assert.ok(!currentShell().includes('candy-tier-legend'),"No detached legend: grade meaning must be inside the button");
 assert.ok(currentShell().includes('特殊要素'));
+assert.ok(currentShell().includes('data-action="candy-type-filter"'));
+assert.ok(currentShell().includes('アメのタイプ'));
+assert.equal((currentShell().match(/<option value="/g)||[]).length,19);
 assert.ok(!currentShell().includes('特殊形態の種類'));
 assert.ok(currentShell().includes('伝説・幻'));
 assert.ok(currentShell().includes('追加進化待ち'));
@@ -101,16 +122,16 @@ assert.ok(dialog.includes('投入優先度')&&dialog.includes('ピチュー'));
 state.master.pokemon.push({key:'1100:default',id:1100,name:'未登録ポケモン',form:'',sleep:'不明',islands:[]});
 const pending=vm.runInContext('candyFamilies()',context).find(f=>f.key==='pending:1100');
 assert.ok(pending?.unknown);
-assert.equal(vm.runInContext('candyBadge',context)(pending),'特殊要素：未確認');
+assert.equal(vm.runInContext('candyBadge',context)(pending),'アメのタイプ・特殊要素：未確認');
 const prefsStart=app.indexOf('  const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};');
 const prefsEnd=app.indexOf('  const state={master,',prefsStart);
 assert.ok(prefsStart>0&&prefsEnd>prefsStart);
 function migrated(saved){
  const isolated=vm.createContext({
    DEFAULT_PREFS:{tab:'candy',area:0,onlyRated:true,searchGrades:null,
-     candySpecial:'all',candyKind:'all',candyTier:'all'},
+     candySpecial:'all',candyKind:'all',candyTier:'all',candyType:'all'},
    KEYS:{prefs:'prefs'},fromLocal:()=>saved,CANDY_LEVELS:levels,
-   CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',legendary:'伝説・幻',evolution:'追加進化待ち'},
+   CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',legendary:'伝説・幻',evolution:'追加進化待ち'},CANDY_TYPES:types,
    SEARCH_GRADE_IDS:['star','double','circle','triangle','cross','none'],Set,Object,Array,Number
  });
  vm.runInContext(app.slice(prefsStart,prefsEnd),isolated);
@@ -122,4 +143,7 @@ assert.equal(migrated({candySpecial:'regional'}).candyKind,'regional');
 assert.equal(migrated({candySpecial:'none'}).candySpecial,'none');
 assert.equal(migrated({candySpecial:'any',candyKind:'gmax'}).candyKind,'gmax');
 assert.equal(migrated({candySpecial:'invalid'}).candySpecial,'all');
+assert.equal(migrated({candyType:'ghost'}).candyType,'ghost');
+assert.equal(migrated({candyType:'invalid'}).candyType,'all');
+assert.equal(migrated({}).candyType,'all');
 console.log('PASS: 108 inline candy priorities, integrated symbol labels, 9 legendary/mythical and Mankey-only category, staged filters');

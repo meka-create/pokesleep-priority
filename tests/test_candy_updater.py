@@ -16,7 +16,7 @@ class CandyUpdaterTest(unittest.TestCase):
 
     def test_prebuilt_candy_master(self):
         self.assertTrue(validate(self.candy,self.master))
-        self.assertEqual(self.candy['schema'],2)
+        self.assertEqual(self.candy['schema'],3)
         self.assertGreaterEqual(len(self.candy['families']),108)
         legends=sorted(f['id'] for f in self.candy['families'] if f['special']['legendary'])
         pending=[f['id'] for f in self.candy['families'] if f['special']['evolution']]
@@ -47,7 +47,10 @@ class CandyUpdaterTest(unittest.TestCase):
             {'species_id':'6','identifier':'charizard-mega-x'},
             {'species_id':'6','identifier':'charizard-gmax'},
         ]
-        result=build(self.master,list(species_by_id.values()),variants,date='2026-11-02')
+        sleep_types=[{'id':f['labelId'],'type':f['type'],'form':''}
+                     for f in self.candy['families']]
+        result=build(self.master,list(species_by_id.values()),variants,
+                     date='2026-11-02',sleep_pokemon=sleep_types)
         by_id={f['id']:f for f in result['families']}
         self.assertEqual(by_id[172]['labelId'],25)
         self.assertEqual(by_id[172]['members'],[25,26,172])
@@ -57,6 +60,10 @@ class CandyUpdaterTest(unittest.TestCase):
         self.assertEqual(by_id[56]['special']['evolution'],[979])
         self.assertEqual(by_id[150]['special']['legendary'],[150])
         self.assertEqual(by_id[151]['special']['legendary'],[151])
+        self.assertEqual(by_id[133]['type'],'normal','Eevee Candy must not become nine types')
+        self.assertEqual(by_id[37]['type'],'fire','Vulpix Candy must not change to Alolan Ice')
+        self.assertEqual(by_id[194]['type'],'water','Wooper Candy must not change to Paldean Poison')
+        self.assertEqual(by_id[710]['type'],'ghost','Pumpkaboo Candy must retain Ghost')
         for root in (52,83,439,215):
             if root in by_id:self.assertEqual(by_id[root]['special']['evolution'],[])
         # Annihilape becomes available in Sleep: pending classification clears.
@@ -65,7 +72,7 @@ class CandyUpdaterTest(unittest.TestCase):
             {'id':979,'key':'979:default','name':'コノヨザル',
              'sleep':'うとうと','form':'','islands':[]})
         future=build(future_master,list(species_by_id.values()),variants,
-                     date='2026-11-02')
+                     date='2026-11-02',sleep_pokemon=sleep_types)
         by_future={f['id']:f for f in future['families']}
         self.assertEqual(by_future[56]['special']['evolution'],[])
         self.assertIn(979,by_future[56]['members'])
@@ -79,6 +86,17 @@ class CandyUpdaterTest(unittest.TestCase):
         self.assertTrue(validate(legacy,self.master))
         legacy['schema']=2
         with self.assertRaises(ValueError):validate(legacy,self.master)
+        legacy=json.loads(json.dumps(self.candy))
+        legacy['schema']=2
+        for f in legacy['families']:del f['type']
+        self.assertTrue(validate(legacy,self.master))
+        legacy['schema']=3
+        with self.assertRaises(ValueError):validate(legacy,self.master)
+        no_type=json.loads(json.dumps(sleep_types))
+        no_type[0]['type']='not-a-type'
+        with self.assertRaises(ValueError):
+            build(self.master,list(species_by_id.values()),variants,
+                  sleep_pokemon=no_type,date='2026-11-02')
 
     def test_bad_master_is_rejected_without_overwrite(self):
         changed=json.loads(json.dumps(self.candy))

@@ -6,9 +6,13 @@ const app=read('app.js'),html=read('index.html'),style=read('styles.css'),sw=rea
 const pokemon=JSON.parse(read('data/master.json')).pokemon;
 const candy=JSON.parse(read('data/candy-master.json'));
 const seed=read('data/candy-seed.js');
-assert.equal(candy.schema,2);
+assert.equal(candy.schema,3);
 assert.ok(candy.families.length>=108,'candy families must include current full Sleep master, not old ZIP');
 assert.equal(new Set(candy.families.map(f=>f.id)).size,candy.families.length);
+const allTypes=new Set(['normal','fire','water','electric','grass','ice','fighting','poison','ground',
+ 'flying','psychic','bug','rock','ghost','dragon','dark','steel','fairy']);
+assert.equal(new Set(candy.families.map(f=>f.type)).size,18);
+assert.ok(candy.families.every(f=>allTypes.has(f.type)), 'Every candy must have one valid type');
 assert.deepEqual(JSON.parse(seed.slice('window.__CANDY_MASTER__='.length).trim().replace(/;$/,'')),candy);
 const unique=new Set(),familyMap=new Map();
 for(const f of candy.families){
@@ -29,6 +33,10 @@ assert.ok(pika.special.regional.includes(26));
 assert.equal(familyMap.get(439).labelId,122,'Mime Jr uses Mr Mime Candy');
 assert.equal(familyMap.get(980).id,familyMap.get(194).id,'Clodsire shares Wooper lineage');
 assert.equal(familyMap.get(700).id,familyMap.get(133).id,'all Eeveelutions share Eevee candy');
+assert.equal(familyMap.get(133).type,'normal','Eevee Candy must be Normal');
+assert.equal(familyMap.get(37).type,'fire','Vulpix Candy must use normal form type, not Alolan Ice');
+assert.equal(familyMap.get(194).type,'water','Wooper Candy must use normal form type, not Paldean Poison');
+assert.equal(familyMap.get(710).type,'ghost','Pumpkaboo Candy must have stable Ghost type');
 const legendFamilies=candy.families.filter(f=>f.special.legendary.length);
 const pendingFamilies=candy.families.filter(f=>f.special.evolution.length);
 assert.deepEqual(legendFamilies.map(f=>f.id).sort((a,b)=>a-b),[150,151,243,244,245,380,381,488,491]);
