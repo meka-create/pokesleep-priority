@@ -1060,7 +1060,9 @@
     }
   });
   window.addEventListener('resize',()=>{if(candyTypePickerTrigger)positionCandyTypePicker()});
-  window.addEventListener('scroll',()=>{if(candyTypePickerTrigger)positionCandyTypePicker()},true);
+  window.addEventListener('scroll',ev=>{
+    if(candyTypePickerTrigger&&ev.target!==candyTypeMenu)positionCandyTypePicker();
+  },true);
   document.addEventListener('click',async ev=>{
     const b=ev.target.closest('[data-action]');if(!b||b.type==='checkbox')return;const action=b.dataset.action;
     if(action==='tab')switchTab(b.dataset.tab);
