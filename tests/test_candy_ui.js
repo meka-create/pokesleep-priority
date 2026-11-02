@@ -112,10 +112,10 @@ assert.ok(!currentShell().includes('data-action="candy-type-filter"'),
  'Removed candy type filter must not appear');
 assert.ok(!currentShell().includes('アメのタイプ'),
  'No old type filter label should remain');
-assert.ok(!currentShell().includes('全種類'),
- 'Duplicate special kind All option must be removed');
-assert.equal((currentShell().match(/data-action="candy-kind-filter"/g)||[]).length,5,
- 'Only five distinct special element kinds should be selectable');
+assert.ok(currentShell().includes('全種類'),
+ 'All special KINDS are distinct from the presence all/any/none selector');
+assert.equal((currentShell().match(/data-action="candy-kind-filter"/g)||[]).length,6,
+ 'Show 全種類 plus five distinct special element categories');
 assert.ok(!currentShell().includes('特殊形態の種類'));
 assert.ok(currentShell().includes('伝説・幻'));
 assert.ok(currentShell().includes('追加進化待ち'));
@@ -168,9 +168,22 @@ state.prefs.candyKind='all';state.prefs.candySpecial='any';
 kindClick('mega');
 assert.equal(state.prefs.candyKind,'mega');
 kindClick('mega');
-assert.equal(state.prefs.candyKind,'all','tapping the same kind must show all special families');
+assert.equal(state.prefs.candyKind,'mega','pressing selected kind preserves its filter');
+kindClick('all');
+assert.equal(state.prefs.candyKind,'all','全種類 clears the kind constraint only');
 render({});
 assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
  candy.families.filter(f=>Object.values(f.special).some(x=>x.length)).length);
-assert.equal(presses,4);
-console.log('PASS: 108 candy cards have distinct colored type tags; no type filter or redundant All-kind choice; tap-to-clear specials');
+assert.equal(presses,6);
+state.prefs.candySpecial='all';
+state.prefs.candyKind='mega';
+render({});
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,108,
+ '特殊要素「すべて」 includes both special and non-special candies regardless of kind');
+state.prefs.candySpecial='any';
+state.prefs.candyKind='all';
+render({});
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
+ candy.families.filter(f=>Object.values(f.special).some(x=>x.length)).length,
+ '種類「全種類」 includes all families that have some special element only');
+console.log('PASS: 108 colored candy type badges; no type filter; separate special presence All and kind 全種類');
