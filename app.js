@@ -9,10 +9,13 @@
   const CANDY_LEVELS=[{id:'use',symbol:'◎',label:'優先投入'},{id:'candidate',symbol:'○',label:'投入候補'},{id:'hold',symbol:'△',label:'保留'},{id:'save',symbol:'×',label:'温存'}];
   const CANDY_IDS=new Set(CANDY_LEVELS.map(x=>x.id));
   const CANDY_KINDS={regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',legendary:'伝説・幻',evolution:'追加進化待ち'};
+  const CANDY_TYPES={normal:'ノーマル',fire:'ほのお',water:'みず',electric:'でんき',grass:'くさ',ice:'こおり',
+    fighting:'かくとう',poison:'どく',ground:'じめん',flying:'ひこう',psychic:'エスパー',bug:'むし',
+    rock:'いわ',ghost:'ゴースト',dragon:'ドラゴン',dark:'あく',steel:'はがね',fairy:'フェアリー'};
   const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
-  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all',candyKind:'all'};
+  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all',candyKind:'all',candyType:'all'};
   // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
   const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
   const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
@@ -85,12 +88,12 @@
   })():base;
   const master={...combinedMaster,pokemon:canonicalizePokemon(combinedMaster.pokemon)};
   function validCandyMaster(value){
-    if(!value||value.schema!==2||!Array.isArray(value.families)||value.families.length<70)return false;
+    if(!value||value.schema!==3||!Array.isArray(value.families)||value.families.length<70)return false;
     const keys=new Set(),members=new Set();
     for(const f of value.families){
       if(!Number.isInteger(f.id)||f.id<1||keys.has(f.id)||!Number.isInteger(f.labelId)
         ||!Array.isArray(f.members)||!f.members.includes(f.labelId)
-        ||!f.special||typeof f.special!=='object')return false;
+        ||!f.special||typeof f.special!=='object'||!Object.hasOwn(CANDY_TYPES,f.type))return false;
       keys.add(f.id);
       for(const id of f.members){
         if(!Number.isInteger(id)||id<1||members.has(id))return false;
@@ -122,6 +125,7 @@
   }
   if(!['all','any','none'].includes(prefs.candySpecial))prefs.candySpecial='all';
   if(!['all',...Object.keys(CANDY_KINDS)].includes(prefs.candyKind))prefs.candyKind='all';
+  if(prefs.candyType!=='all'&&!Object.hasOwn(CANDY_TYPES,prefs.candyType))prefs.candyType='all';
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
   // Migrate v0.1.2's onlyRated preference without changing any stored ratings.
   // An explicitly saved empty array means 'show no grades', not 'reset filter'.
@@ -368,13 +372,13 @@
     // relation or claiming that it has no special forms.
     for(const [id,p] of byId)if(!covered.has(id))
       groups.push({id,key:'pending:'+id,label:p.name+'のアメ（仮）',representative:p,
-        memberNames:[p.name],special:{regional:[],mega:[],gmax:[],legendary:[],evolution:[]},unknown:true});
+        memberNames:[p.name],type:null,special:{regional:[],mega:[],gmax:[],legendary:[],evolution:[]},unknown:true});
     return groups;
   }
   function candyBadge(f){
-    if(f.unknown)return '特殊要素：未確認';
+    if(f.unknown)return 'アメのタイプ・特殊要素：未確認';
     const kinds=Object.entries(CANDY_KINDS).filter(([key])=>f.special[key]?.length).map(([,label])=>label);
-    return kinds.length?kinds.join(' / '):'特殊要素なし';
+    return (CANDY_TYPES[f.type]||'タイプ未確認')+' / '+(kinds.length?kinds.join(' / '):'特殊要素なし');
   }
   function candyShell(){
     const tierOptions=[{id:'all',symbol:'すべて',label:'すべて'},
@@ -391,6 +395,12 @@
         +'<span class="candy-tier-symbol">'+htmlEscape(t.symbol)+'</span>'
         +(t.id==='all'||t.id==='none'?'':'<span class="candy-tier-name">'+htmlEscape(t.label)+'</span>')
         +'</button>').join('')+'</div>'
+      +'<div class="candy-type-filter"><label class="candy-filter-label" for="candy-type-select">アメのタイプ</label>'
+      +'<select id="candy-type-select" data-action="candy-type-filter" aria-label="アメのタイプで絞り込み">'
+      +'<option value="all">すべて</option>'
+      +Object.entries(CANDY_TYPES).map(([value,label])=>'<option value="'+value+'"'
+        +(state.prefs.candyType===value?' selected':'')+'>'+label+'</option>').join('')
+      +'</select></div>'
       +'<div class="candy-filter-label">特殊要素</div>'
       +'<div class="candy-special-modes" role="group" aria-label="特殊要素の有無">'
       +modes.map(m=>'<button type="button" class="candy-special-mode'+(selected===m.id?' active':'')+'"'
@@ -402,7 +412,7 @@
   }
   function renderCandyResults(el){
     const search=normalize(state.prefs.search),tier=state.prefs.candyTier;
-    const special=state.prefs.candySpecial,kind=state.prefs.candyKind;
+    const special=state.prefs.candySpecial,kind=state.prefs.candyKind,candyType=state.prefs.candyType;
     const order={use:0,candidate:1,hold:2,save:3,none:4};
     const groups=candyFamilies().filter(f=>{
       if(search&&!normalize(f.label).includes(search)
@@ -411,6 +421,7 @@
         &&!String(f.id).startsWith(search))return false;
       const value=candyChoice(f.key);
       if(tier!=='all'&&tier!==value)return false;
+      if(candyType!=='all'&&f.type!==candyType)return false;
       const hasAny=Object.keys(CANDY_KINDS).some(k=>f.special[k]?.length);
       if(special==='any'&&(!hasAny||(kind!=='all'&&!f.special[kind]?.length)))return false;
       if(special==='none'&&(hasAny||f.unknown))return false;
@@ -993,6 +1004,13 @@
   });
   document.addEventListener('change',ev=>{
     const b=ev.target;
+    if(b.dataset.action==='candy-type-filter'){
+      const next=b.value;
+      if(next==='all'||Object.hasOwn(CANDY_TYPES,next)){
+        state.prefs.candyType=next;save();render();
+      }
+      return;
+    }
     if(b.dataset.action==='island-toggle'&&state.selected){
       const p=selected(),idx=Number(b.dataset.island);
       if(!p||!Number.isInteger(idx))return;
