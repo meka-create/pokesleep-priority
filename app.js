@@ -401,9 +401,8 @@
       +modes.map(m=>'<button type="button" class="candy-special-mode'+(selected===m.id?' active':'')+'"'
         +' data-action="candy-special-filter" data-value="'+m.id+'" aria-pressed="'+(selected===m.id)+'">'+m.label+'</button>').join('')+'</div>'
       +(selected==='any'?'<div class="candy-kind-filter"><div class="candy-filter-label">種類</div>'
-        +'<div class="candy-kind-options" role="group" aria-label="特殊要素の種類。再タップで選択解除">'
-        +chips(Object.entries(CANDY_KINDS).map(([id,text])=>({id,text})),
-          state.prefs.candyKind,'candy-kind-filter')+'</div></div>':'')
+        +chips([{id:'all',text:'全種類'},...Object.entries(CANDY_KINDS).map(([id,text])=>({id,text}))],
+          state.prefs.candyKind,'candy-kind-filter')+'</div>':'')
       +'</section><div id="results"></div>';
   }
   function renderCandyResults(el){
@@ -980,10 +979,7 @@
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
     if(action==='candy-tier-filter'){state.prefs.candyTier=b.dataset.value;save();render()}
     if(action==='candy-special-filter'&&['all','any','none'].includes(b.dataset.value)){state.prefs.candySpecial=b.dataset.value;save();render()}
-    if(action==='candy-kind-filter'&&Object.hasOwn(CANDY_KINDS,b.dataset.value)){
-      state.prefs.candyKind=state.prefs.candyKind===b.dataset.value?'all':b.dataset.value;
-      save();render();
-    }
+    if(action==='candy-kind-filter'&&['all',...Object.keys(CANDY_KINDS)].includes(b.dataset.value)){state.prefs.candyKind=b.dataset.value;save();render()}
     if(action==='upload-icon')$('#icon-input').click();
     if(action==='reset-icon'&&state.selected)await setIcon(state.selected,null);
     if(action==='reset-islands'&&state.selected){
