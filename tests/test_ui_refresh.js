@@ -58,7 +58,7 @@ assert.ok(app.includes('class="island-heading"><h4>'+ '$'+'{AREAS[i]}</h4>'));
 assert.ok(flow.includes("cron: '17 19 * * *'"));
 assert.ok(flow.includes('bootstrap_fields.py'));
 // v0.2.11: nav symbols and candy outline share the same centering, color and tap behavior.
-const navButtons=[...html.matchAll(/<button type="button" class="nav-button(?: active)?" data-action="tab" data-tab="(dex|search|candy)">([\\s\\S]*?)<\\/button>/g)];
+const navButtons=[...html.matchAll(/<button type="button" class="nav-button(?: active)?" data-action="tab" data-tab="(dex|search|candy)">([\s\S]*?)<\/button>/g)];
 assert.deepEqual(navButtons.map(m=>m[1]),['dex','search','candy'],'preserve all three tab buttons');
 assert.ok(navButtons[0][2].includes('<span aria-hidden="true">▦</span><span>図鑑</span>'),'Pokédex tab icon must remain unchanged');
 assert.ok(navButtons[1][2].includes('<span aria-hidden="true">⌕</span><span>評価検索</span>'),'search tab icon must remain unchanged');
