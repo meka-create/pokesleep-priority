@@ -5,16 +5,18 @@ const app=fs.readFileSync(path.join(root,'app.js'),'utf8');
 const master=JSON.parse(fs.readFileSync(path.join(root,'data/master.json'),'utf8'));
 const candy=JSON.parse(fs.readFileSync(path.join(root,'data/candy-master.json'),'utf8'));
 const style=fs.readFileSync(path.join(root,'styles.css'),'utf8');
-assert.match(style,/\.candy-profile\{display:grid;grid-template-columns:52px minmax\(0,1fr\) max-content 12px;align-items:start;/,
-  'Candy image, name, type and chevron must use a stable four-column grid');
-assert.match(style,/\.candy-item-info\{grid-column:2;grid-row:1;[^}]*padding-top:3px/,
-  'Candy name should align to badge first line, while the special description wraps beneath');
-assert.match(style,/\.candy-type-tag\{grid-column:3;grid-row:1;align-self:start;/,
-  'Type badge should align to the name rather than the center of the card');
-assert.match(style,/\.candy-chevron\{grid-column:4;grid-row:1;align-self:start;/,
-  'Chevron should remain immediately to the right of the type badge');
-assert.ok(style.includes('.candy-profile{column-gap:6px}'),
-  'Narrow Android layouts must preserve room for name and type');
+assert.ok(style.includes('.candy-profile{display:flex;align-items:center;gap:10px;'),
+  'Restore the v0.2.4 flex row with centered candy type and chevron');
+assert.ok(style.includes('.candy-item-info{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;justify-content:center}'),
+  'Name and special-element description should remain vertically centered');
+assert.ok(style.includes('.candy-type-tag{--candy-accent:'),
+  'Retain color-coded type labels without top-row grid alignment');
+assert.ok(style.includes('.candy-chevron{color:#7890a9;font-size:23px;flex:none;line-height:1}'),
+  'Chevron should remain centered immediately after the candy type');
+assert.ok(!style.includes('.candy-profile{display:grid;'),
+  'Do not reintroduce the v0.2.5 top-aligned four-column grid');
+assert.ok(style.includes('@media(max-width:359px){.candy-type-tag{padding:3px 5px;font-size:9px}}'),
+  'Restore the original narrow-screen type badge sizing');
 
 const start=app.indexOf('  function candyChoice(id){'),end=app.indexOf('  function chips(options,value,action',start);
 assert.ok(start>0&&end>start);
