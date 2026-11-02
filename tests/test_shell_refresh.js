@@ -39,7 +39,7 @@ async function dispatch(request){
   const navigate={url:'https://example.org/pokesleep-priority/',mode:'navigate',method:'GET'};
   assert.equal(await dispatch(navigate),'CURRENT HTML','navigation must check latest HTML');
   assert.equal(cached.get('./index.html'),'CURRENT HTML');
-  const appScript=new Request('https://example.org/pokesleep-priority/app.js?v=0.2.7');
+  const appScript=new Request('https://example.org/pokesleep-priority/app.js?v=0.2.8');
   assert.equal(await dispatch(appScript),'CURRENT JS','old app scripts must never stay pinned by CacheStorage');
   assert.equal(cached.get('./app.js'),'CURRENT JS','new script should be cached for offline use');
   online=false;
