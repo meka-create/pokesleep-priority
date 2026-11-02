@@ -424,7 +424,8 @@
       '<button type="button" class="candy-type-option" role="option"'
       +' data-action="candy-type-option" data-type="'+type+'"'
       +' aria-selected="'+(type===chosen)+'" tabindex="-1">'
-      +'<span class="candy-type-pill" data-type="'+type+'">'+label+'</span>'
+      +'<span class="candy-type-dot" aria-hidden="true"></span>'
+      +'<span class="candy-type-option-name">'+label+'</span>'
       +'<span class="candy-type-check" aria-hidden="true">✓</span></button>').join('');
     menu.hidden=false;menu.scrollTop=0;trigger.setAttribute('aria-expanded','true');
     positionCandyTypePicker();
@@ -463,8 +464,8 @@
       +' data-action="candy-type-trigger" data-type="'+currentType+'"'
       +' aria-label="アメのタイプ：'+currentTypeLabel+'" aria-haspopup="listbox"'
       +' aria-controls="candy-type-listbox" aria-expanded="false">'
-      +'<span class="candy-type-current"><span class="candy-type-pill" data-type="'+currentType+'">'
-      +currentTypeLabel+'</span></span>'
+      +'<span class="candy-type-current"><span class="candy-type-dot" aria-hidden="true"></span>'
+      +'<span>'+currentTypeLabel+'</span></span>'
       +'<span class="candy-type-arrow" aria-hidden="true">▾</span></button></div>'
       +'<div class="candy-filter-label">特殊要素</div>'
       +'<div class="candy-special-modes" role="group" aria-label="特殊要素の有無">'

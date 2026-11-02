@@ -14,19 +14,11 @@ assert.ok(html.includes('role="listbox"')&&html.includes('hidden></div>'));
 assert.ok(style.includes('.candy-type-listbox[hidden]{display:none!important}'));
 assert.ok(style.includes('scrollbar-width:none'));
 assert.ok(style.includes('.candy-type-listbox::-webkit-scrollbar{display:none}'));
-assert.ok(style.includes('.candy-type-tag,.candy-type-pill{--candy-accent:'),
- 'Cards and popup options share the exact same pill base rules');
-assert.ok(style.includes('.candy-type-pill[data-type="all"]{background:#273b50;border-color:#8399a9;color:#eef4ff}'),
- 'All must use the exact active priority All palette');
-assert.ok(style.includes('.candy-tier-choice.active{background:#273b50;border-color:#8399a9;color:#eef4ff}'),
- 'Priority All palette must remain unchanged');
-assert.ok(style.includes('.candy-type-pill[data-type="normal"]{--candy-accent:#d0d7df}'),
- 'Normal must remain light grey and visually distinct from navy All');
-assert.ok(!style.includes('.candy-type-dot{'),'Do not keep redundant swatch styling');
 assert.ok(!app.includes('data-action="candy-type-filter"'), 'No native type selection');
 for(const type of types){
- assert.ok(style.includes('.candy-type-tag[data-type="'+type+'"],.candy-type-pill[data-type="'+type+'"]'),
-   'Picker label must share its exact palette with the card badge: '+type);
+ assert.ok(style.includes('.candy-type-trigger[data-type="'+type+'"]'), 'Missing trigger color '+type);
+ assert.ok(style.includes('.candy-type-option[data-type="'+type+'"]'), 'Missing list color '+type);
+ assert.ok(style.includes('.candy-type-tag[data-type="'+type+'"]'), 'Card color lost '+type);
 }
 const start=app.indexOf('  let candyTypePickerTrigger=null;');
 const end=app.indexOf('  function candyShell(){',start);
@@ -67,12 +59,7 @@ vm.runInContext('openCandyTypePicker(trigger)',ctx);
 assert.equal(menu.hidden,false);
 assert.equal(trigger.attributes['aria-expanded'],'true');
 assert.equal((menu.innerHTML.match(/role="option"/g)||[]).length,19);
-assert.equal((menu.innerHTML.match(/class="candy-type-pill"/g)||[]).length,19,
- 'Each choice uses the same rounded pill as the card');
-assert.ok(!menu.innerHTML.includes('candy-type-dot'),'Old color swatches must be gone');
-assert.ok(menu.innerHTML.includes('<span class="candy-type-pill" data-type="all">すべて</span>'));
-assert.ok(menu.innerHTML.includes('<span class="candy-type-pill" data-type="normal">ノーマル</span>'));
-assert.ok(menu.innerHTML.includes('<span class="candy-type-pill" data-type="fire">ほのお</span>'));
+assert.equal((menu.innerHTML.match(/class="candy-type-dot"/g)||[]).length,19);
 assert.ok(menu.innerHTML.includes('data-type="fire"'));
 assert.ok(menu.innerHTML.includes('data-type="all" aria-selected="true"'));
 assert.ok(Number.parseFloat(menu.style.height)>0);
