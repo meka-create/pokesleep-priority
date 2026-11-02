@@ -30,8 +30,8 @@ for(const landscape of ['amber-landscape','greengrass-ex','cyan-ex']){
 }
 assert.ok(css.includes('data-area-panel="7"]{--field-art:url(\'./assets/field-greengrass-ex.jpg\')'));
 assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cyan-ex.jpg\')'));
-assert.ok(html.includes('href="./styles.css?v=0.2.10"'),"CSS must be versioned against stale PWA cache");
-assert.ok(html.includes('src="./app.js?v=0.2.10"'),"new app script must bypass stale browser cache");
+assert.ok(html.includes('href="./styles.css?v=0.2.11"'),"CSS must be versioned against stale PWA cache");
+assert.ok(html.includes('src="./app.js?v=0.2.11"'),"new app script must bypass stale browser cache");
 assert.ok(sw.includes("const isDocument=req.mode==='navigate'"),"navigation must bypass stale HTML cache");
 assert.ok(sw.includes("const isCSS=url.pathname.endsWith('/styles.css')"),"CSS must refresh even with installed PWA");
 assert.ok(sw.includes("const isAppScript=url.pathname.endsWith('/app.js')"),"app logic must update online");
@@ -57,4 +57,19 @@ assert.ok(app.includes('sleepDot(t.id)'));
 assert.ok(app.includes('class="island-heading"><h4>'+ '$'+'{AREAS[i]}</h4>'));
 assert.ok(flow.includes("cron: '17 19 * * *'"));
 assert.ok(flow.includes('bootstrap_fields.py'));
+// v0.2.11: nav symbols and candy outline share the same centering, color and tap behavior.
+const navButtons=[...html.matchAll(/<button type="button" class="nav-button(?: active)?" data-action="tab" data-tab="(dex|search|candy)">([\s\S]*?)<\/button>/g)];
+assert.deepEqual(navButtons.map(m=>m[1]),['dex','search','candy'],'preserve all three tab buttons');
+assert.ok(navButtons[0][2].includes('<span aria-hidden="true">▦</span><span>図鑑</span>'),'Pokédex tab icon must remain unchanged');
+assert.ok(navButtons[1][2].includes('<span aria-hidden="true">⌕</span><span>評価検索</span>'),'search tab icon must remain unchanged');
+assert.ok(navButtons[2][2].includes('<span aria-hidden="true"><svg class="nav-candy-icon"'),'replace diamond with inline candy SVG');
+assert.ok(!navButtons[2][2].includes('◇'),'diamond icon must not return');
+assert.ok(navButtons[2][2].includes('<span>ウッウロボ</span>'),'preserve the candy tab label');
+for(const part of ['viewBox="0 0 24 24"','stroke="currentColor"','fill="none"','focusable="false"','<rect x="7" y="8"','<path d="M7 9'])assert.ok(navButtons[2][2].includes(part),'candy SVG missing '+part);
+assert.ok(css.includes('.nav-button>span:first-child {font-size:26px;line-height:1.05;display:grid;place-items:center;width:28px;height:28px;flex:none}'),'all tab icon boxes must share size and centering');
+assert.ok(css.includes('.nav-candy-icon {display:block;width:26px;height:26px;flex:none}'),'SVG size must match the other tab icon glyphs');
+assert.ok(css.includes('.nav-button.active {color:var(--accent);background:#2b3b49}'),'selected color must be inherited by the SVG');
+assert.ok(css.includes('color:#899db3;font-size:12px;font-weight:750}'),'unselected color must be inherited by the SVG');
+assert.ok(sw.includes("const SHELL_CACHE='gense-note-shell-v0.2.11'"),'refresh installed PWA shell cache');
+
 console.log('PASS: compact header; rated counter; clear presets; search placeholders; sleep type colors; 6 normal images + 3 distinct field landscapes; original 54px band; offline precache');
