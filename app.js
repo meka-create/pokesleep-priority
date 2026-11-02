@@ -628,7 +628,7 @@
   function details(){const p=selected();if(!p)return;const g=grade(p.key),islands=islandList(p),custom=Object.hasOwn(state.overrides,p.key);$('#details-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><div class="subtle">No. ${String(p.id).padStart(4,'0')}　${htmlEscape(p.sleep)}</div><button class="close-button" data-action="close-details" aria-label="閉じる">×</button></div><div class="sheet-pokemon">${iconMarkup(p)}<div><h2>${htmlEscape(p.name)}</h2><p>${islands.length?islands.map(x=>AREAS[x]).join(' / '):'出現島の情報は未設定'}</p></div></div><p class="field-label">厳選優先度を選択</p><div class="grade-options">${LEVELS.map(x=>`<button class="grade-choice ${g===x.id?'active':''}" data-action="rate" data-grade="${x.id}" aria-pressed="${g===x.id}"><span>${x.symbol}</span><span>${x.label}</span></button>`).join('')}</div><div class="sheet-actions"><button class="secondary-button" data-action="unrate">未評価に戻す</button><button class="secondary-button" data-action="upload-icon">アイコン変更</button>${state.icons.has(p.key)?'<button class="secondary-button" data-action="reset-icon">画像解除</button>':''}</div><details><summary>出現する島を手動で修正 ${custom?'（手動設定中）':''}</summary><div class="island-options">${AREAS.map((a,i)=>`<label class="island-option"><input type="checkbox" data-action="island-toggle" data-island="${i}" ${islands.includes(i)?'checked':''}> ${htmlEscape(a)}</label>`).join('')}</div><button class="secondary-button" data-action="reset-islands">マスターの島データに戻す</button><p class="small-note">手動で変更した島の設定は、マスターが更新されても維持されます。</p></details><p class="small-note">優先度やアップロード画像はこの端末に保存されます。端末移行には設定からバックアップしてください。</p>`;
     if($('#details').open)activateDetailSprite();
   }
-  function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・島の手動修正・登録したアイコンをJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
+  function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・ウッウロボの投入優先度・島設定・登録画像をJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
   function updateGrade(k,g){
     const previous=grade(k);
     if(g==='none')delete state.ratings[k];else state.ratings[k]=g;
@@ -737,7 +737,7 @@
   function imageAsDataURL(file){return new Promise((resolve,reject)=>{if(!file||file.size>8*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type))return reject(Error('PNG・JPEG・WebP、8MB以内の画像を指定してください'));const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{try{const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');const scale=Math.min(128/img.width,128/img.height);const w=img.width*scale,h=img.height*scale;ctx.clearRect(0,0,128,128);ctx.drawImage(img,(128-w)/2,(128-h)/2,w,h);const data=canvas.toDataURL('image/png');URL.revokeObjectURL(url);resolve(data)}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('画像を読み込めませんでした'))};img.src=url})}
   async function handleIconInput(file){const p=selected();if(!p)return;try{const data=await imageAsDataURL(file);await setIcon(p.key,data)}catch(e){toast(e.message||'画像処理に失敗しました')}}
   function downloadJSON(obj,name){const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-  function backup(){downloadJSON({app:'pokesleep-priority',version:1,date:new Date().toISOString(),ratings:state.ratings,overrides:state.overrides,icons:Object.fromEntries(state.icons)},`gense-note-backup-${nowJST()}.json`);toast('バックアップファイルを保存しました')}
+  function backup(){downloadJSON({app:'pokesleep-priority',version:1,date:new Date().toISOString(),ratings:state.ratings,overrides:state.overrides,candyRatings:state.candyRatings,icons:Object.fromEntries(state.icons)},`gense-note-backup-${nowJST()}.json`);toast('バックアップファイルを保存しました')}
   function sanitizedRatings(obj){const safe={};if(obj&&typeof obj==='object'&&!Array.isArray(obj)){for(const [k,v] of Object.entries(obj))if(/^\d+:[A-Za-z0-9 _-]+$/.test(k)&&GRADE_IDS.has(v))safe[k]=v}return safe}
   function sanitizedOverrides(obj){const safe={};if(obj&&typeof obj==='object'&&!Array.isArray(obj)){for(const [k,v] of Object.entries(obj))if(/^\d+:[A-Za-z0-9 _-]+$/.test(k)&&Array.isArray(v))safe[k]=[...new Set(v.filter(n=>Number.isInteger(n)&&n>=0&&n<9))].sort((a,b)=>a-b)}return safe}
   async function restore(file){
@@ -763,13 +763,25 @@
         !/^\d+:[A-Za-z0-9 _-]+$/.test(key)||!Array.isArray(islands)
         ||islands.some(n=>!Number.isInteger(n)||n<0||n>=AREAS.length)))
         throw Error('バックアップ内の島設定が不正です');
+      // v1 backups created before the candy feature intentionally omit
+      // candyRatings. Preserve current candy choices when importing them.
+      const hasCandy=Object.hasOwn(input,'candyRatings');
+      if(hasCandy&&(!isRecord(input.candyRatings)||Object.entries(input.candyRatings).some(
+        ([key,value])=>!/^(?:[1-9]\d*|pending:[1-9]\d*)$/.test(key)||!CANDY_IDS.has(value))))
+        throw Error('バックアップ内のウッウロボ優先度が不正です');
+      const restoredCandy=hasCandy?input.candyRatings:state.candyRatings;
       const ratings=sanitizedRatings(input.ratings),overrides=sanitizedOverrides(input.overrides);
       if(!confirm('現在の厳選優先度・手動設定をバックアップの内容に置き換えます。続けますか？'))return;
-      const formerRatings=state.ratings,formerOverrides=state.overrides;
+      const formerRatings=state.ratings,formerOverrides=state.overrides,formerCandy=state.candyRatings;
       if(!setLocal(KEYS.ratings,ratings))throw Error('評価を保存できませんでした');
       if(!setLocal(KEYS.overrides,overrides)){
         setLocal(KEYS.ratings,formerRatings);
         throw Error('島設定を保存できませんでした');
+      }
+      if(!setLocal(KEYS.candy,restoredCandy)){
+        setLocal(KEYS.ratings,formerRatings);
+        setLocal(KEYS.overrides,formerOverrides);
+        throw Error('ウッウロボ優先度を保存できませんでした');
       }
       try{
         // One transaction: either ALL icons are replaced or NONE are.
@@ -778,9 +790,10 @@
       }catch(error){
         setLocal(KEYS.ratings,formerRatings);
         setLocal(KEYS.overrides,formerOverrides);
+        setLocal(KEYS.candy,formerCandy);
         throw error;
       }
-      state.ratings=ratings;state.overrides=overrides;
+      state.ratings=ratings;state.overrides=overrides;state.candyRatings=restoredCandy;
       state.icons=new Map(candidates);
       dialogClose('#settings-dialog');render();toast('バックアップを復元しました');
     }catch(error){toast(`復元失敗：${error.message||'JSON形式を確認してください'}`)}
