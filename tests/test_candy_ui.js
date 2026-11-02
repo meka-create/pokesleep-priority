@@ -35,7 +35,7 @@ assert.equal(families.length,108);
 const bulba=families.find(f=>f.id===1);
 assert.ok(bulba.label.includes('フシギダネ'));
 assert.ok(vm.runInContext('candyBadge',context)(bulba).includes('メガシンカ'));
-assert.ok(vm.runInContext('candyBadge',context)(bulba).includes('くさ'));
+assert.ok(!vm.runInContext('candyBadge',context)(bulba).includes('くさ'), 'Type belongs in its own colored tag');
 const mew=families.find(f=>f.id===151);
 assert.ok(vm.runInContext('candyBadge',context)(mew).includes('伝説・幻'));
 const mankey=families.find(f=>f.id===56);
@@ -50,6 +50,15 @@ assert.ok(pikachu.memberNames.some(n=>n.includes('ピチュー')));
 const render=vm.runInContext('renderCandyResults',context);
 render({});
 assert.ok(html.includes('フシギダネのアメ'));
+assert.ok(html.includes('<span class="candy-type-tag" data-type="grass">くさ</span>'));
+assert.ok(html.includes('<span class="candy-type-tag" data-type="normal">ノーマル</span>'));
+assert.ok(html.includes('<span class="candy-type-tag" data-type="fire">ほのお</span>'));
+assert.ok(html.includes('<span class="candy-type-tag" data-type="water">みず</span>'));
+assert.equal((html.match(/class="candy-type-tag"/g)||[]).length,108);
+assert.equal((html.match(/class="candy-chevron"/g)||[]).length,108);
+const pokemonCard=html.slice(html.indexOf('フシギダネのアメ'));
+assert.ok(pokemonCard.indexOf('candy-type-tag')<pokemonCard.indexOf('candy-chevron'),
+ 'Colored candy type must appear immediately before the top-right chevron');
 assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,108);
 assert.equal((html.match(/data-action="candy-quick-rate"/g)||[]).length,108*4);
 assert.ok(html.includes('<article class="candy-item"'),"Candy cards need independent profile and grading buttons");
@@ -82,19 +91,11 @@ assert.ok(html.includes('マンキーのアメ'));
 assert.ok(!html.includes('ニャースのアメ'));
 state.prefs.candyKind='all';render({});
 assert.ok(html.includes('ロコンのアメ'),"Any-special mode must include regional forms too");
+// A pre-v0.2.4 saved candy type filter must not hide any cards.
 state.prefs.candySpecial='all';
 state.prefs.candyType='normal';render({});
-assert.ok(html.includes('イーブイのアメ'));
-assert.ok(!html.includes('ロコンのアメ'));
-assert.ok(!html.includes('フシギダネのアメ'));
-assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
- candy.families.filter(f=>f.type==='normal').length);
-state.prefs.candyType='fire';render({});
-assert.ok(html.includes('ロコンのアメ'),'Vulpix Candy is Fire');
-assert.ok(!html.includes('イーブイのアメ'),'Eevee Candy is NOT Fire despite Flareon');
-state.prefs.candyType='water';render({});
-assert.ok(html.includes('ウパーのアメ'),'Wooper Candy is Water');
-state.prefs.candyType='all';
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,108,
+ 'Former type filter may remain in old preferences, but must no longer restrict the list');
 state.prefs.candySpecial='none';render({});
 assert.ok(!html.includes('フシギダネのアメ'),"No-special mode must exclude Mega/Gmax Pokémon");
 const currentShell=vm.runInContext('candyShell',context);
@@ -107,9 +108,14 @@ assert.ok(currentShell().includes('class="candy-tier-name">優先投入</span>')
 assert.ok(currentShell().includes('class="candy-tier-symbol">◎</span>'));
 assert.ok(!currentShell().includes('candy-tier-legend'),"No detached legend: grade meaning must be inside the button");
 assert.ok(currentShell().includes('特殊要素'));
-assert.ok(currentShell().includes('data-action="candy-type-filter"'));
-assert.ok(currentShell().includes('アメのタイプ'));
-assert.equal((currentShell().match(/<option value="/g)||[]).length,19);
+assert.ok(!currentShell().includes('data-action="candy-type-filter"'),
+ 'Removed candy type filter must not appear');
+assert.ok(!currentShell().includes('アメのタイプ'),
+ 'No old type filter label should remain');
+assert.ok(currentShell().includes('全種類'),
+ 'All special KINDS are distinct from the presence all/any/none selector');
+assert.equal((currentShell().match(/data-action="candy-kind-filter"/g)||[]).length,6,
+ 'Show 全種類 plus five distinct special element categories');
 assert.ok(!currentShell().includes('特殊形態の種類'));
 assert.ok(currentShell().includes('伝説・幻'));
 assert.ok(currentShell().includes('追加進化待ち'));
@@ -122,7 +128,7 @@ assert.ok(dialog.includes('投入優先度')&&dialog.includes('ピチュー'));
 state.master.pokemon.push({key:'1100:default',id:1100,name:'未登録ポケモン',form:'',sleep:'不明',islands:[]});
 const pending=vm.runInContext('candyFamilies()',context).find(f=>f.key==='pending:1100');
 assert.ok(pending?.unknown);
-assert.equal(vm.runInContext('candyBadge',context)(pending),'アメのタイプ・特殊要素：未確認');
+assert.equal(vm.runInContext('candyBadge',context)(pending),'特殊要素：未確認');
 const prefsStart=app.indexOf('  const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};');
 const prefsEnd=app.indexOf('  const state={master,',prefsStart);
 assert.ok(prefsStart>0&&prefsEnd>prefsStart);
@@ -143,7 +149,41 @@ assert.equal(migrated({candySpecial:'regional'}).candyKind,'regional');
 assert.equal(migrated({candySpecial:'none'}).candySpecial,'none');
 assert.equal(migrated({candySpecial:'any',candyKind:'gmax'}).candyKind,'gmax');
 assert.equal(migrated({candySpecial:'invalid'}).candySpecial,'all');
-assert.equal(migrated({candyType:'ghost'}).candyType,'ghost');
-assert.equal(migrated({candyType:'invalid'}).candyType,'all');
-assert.equal(migrated({}).candyType,'all');
-console.log('PASS: 108 inline candy priorities, integrated symbol labels, 9 legendary/mythical and Mankey-only category, staged filters');
+assert.equal(migrated({candyType:'ghost'}).candyType,undefined,
+ 'Retired type filter state must be discarded');
+assert.equal(migrated({candyType:'invalid'}).candyType,undefined);
+assert.equal(migrated({}).candyType,undefined);
+const kindEventStart=app.indexOf("    if(action==='candy-kind-filter'");
+const kindEventEnd=app.indexOf("    if(action==='upload-icon')",kindEventStart);
+assert.ok(kindEventStart>0&&kindEventEnd>kindEventStart);
+let presses=0;
+function kindClick(value){
+  const scope=vm.createContext({action:'candy-kind-filter',b:{dataset:{value}},
+    state,CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',
+      legendary:'伝説・幻',evolution:'追加進化待ち'},
+    save:()=>presses++,render:()=>presses++,Object});
+  vm.runInContext(app.slice(kindEventStart,kindEventEnd),scope);
+}
+state.prefs.candyKind='all';state.prefs.candySpecial='any';
+kindClick('mega');
+assert.equal(state.prefs.candyKind,'mega');
+kindClick('mega');
+assert.equal(state.prefs.candyKind,'mega','pressing selected kind preserves its filter');
+kindClick('all');
+assert.equal(state.prefs.candyKind,'all','全種類 clears the kind constraint only');
+render({});
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
+ candy.families.filter(f=>Object.values(f.special).some(x=>x.length)).length);
+assert.equal(presses,6);
+state.prefs.candySpecial='all';
+state.prefs.candyKind='mega';
+render({});
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,109,
+ '特殊要素「すべて」 includes both special and non-special candies, including the test-only unknown species');
+state.prefs.candySpecial='any';
+state.prefs.candyKind='all';
+render({});
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
+ candy.families.filter(f=>Object.values(f.special).some(x=>x.length)).length,
+ '種類「全種類」 includes all families that have some special element only');
+console.log('PASS: 108 colored candy type badges; no type filter; separate special presence All and kind 全種類');
