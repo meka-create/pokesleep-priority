@@ -1,5 +1,5 @@
 /* Offline shell + rate-limited PokeAPI sprite cache; no personal data is cached. */
-const SHELL_CACHE='gense-note-shell-v0.1.26';
+const SHELL_CACHE='gense-note-shell-v0.2.0';
 const SPRITE_CACHE='gense-note-sprites-v1';
 const SPRITE_META='gense-note-sprite-meta-v1';
 const SPRITE_ROOT='https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/';
@@ -8,7 +8,7 @@ const MAX_SPRITES=350;
 const MAX_CONCURRENT=3;
 const MIN_REQUEST_GAP_MS=150;
 const MAX_RETRIES=2;
-const CORE=['./','./index.html','./styles.css','./app.js','./data/seed-data.js','./data/master.json','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png','./assets/icon-header-96.png','./assets/icon-maskable-192.png','./assets/icon-maskable-512.png','./assets/favicon-32.png','./assets/favicon-48.png','./assets/apple-touch-icon.png','./assets/field-greengrass.png','./assets/field-cyan.png','./assets/field-taupe.png','./assets/field-snowdrop.png','./assets/field-lapis.png','./assets/field-gold.png','./assets/field-amber-landscape.jpg','./assets/field-greengrass-ex.jpg','./assets/field-cyan-ex.jpg'];
+const CORE=['./','./index.html','./styles.css','./app.js','./data/seed-data.js','./data/candy-seed.js','./data/master.json','./data/candy-master.json','./manifest.webmanifest','./assets/icon-192.png','./assets/icon-512.png','./assets/icon-header-96.png','./assets/icon-maskable-192.png','./assets/icon-maskable-512.png','./assets/favicon-32.png','./assets/favicon-48.png','./assets/apple-touch-icon.png','./assets/field-greengrass.png','./assets/field-cyan.png','./assets/field-taupe.png','./assets/field-snowdrop.png','./assets/field-lapis.png','./assets/field-gold.png','./assets/field-amber-landscape.jpg','./assets/field-greengrass-ex.jpg','./assets/field-cyan-ex.jpg'];
 
 function isSprite(url){return url.origin==='https://raw.githubusercontent.com' && url.href.startsWith(SPRITE_ROOT) && /^\d+\.png$/.test(url.pathname.split('/').pop());}
 
@@ -132,11 +132,11 @@ self.addEventListener('fetch',event=>{
   }
   if(url.origin!==self.location.origin)return;
   if(url.pathname.includes('/.netlify/functions/')){event.respondWith(fetch(req));return}
-  if(url.pathname.endsWith('/master.json')){
+  if(url.pathname.endsWith('/master.json')||url.pathname.endsWith('/candy-master.json')){
     event.respondWith(fetch(req).then(res=>{
-      if(res.ok){const copy=res.clone();event.waitUntil(caches.open(SHELL_CACHE).then(cache=>cache.put('./data/master.json',copy)))}
+      if(res.ok){const copy=res.clone();event.waitUntil(caches.open(SHELL_CACHE).then(cache=>cache.put(url.pathname.endsWith('/candy-master.json')?'./data/candy-master.json':'./data/master.json',copy)))}
       return res;
-    }).catch(()=>caches.match('./data/master.json')));
+    }).catch(()=>caches.match(url.pathname.endsWith('/candy-master.json')?'./data/candy-master.json':'./data/master.json')));
     return;
   }
   // Navigation, app scripts, and CSS must be network-first. The former cache-first rule
@@ -145,10 +145,10 @@ self.addEventListener('fetch',event=>{
   const isDocument=req.mode==='navigate'||url.pathname.endsWith('/index.html');
   const isCSS=url.pathname.endsWith('/styles.css');
   const isAppScript=url.pathname.endsWith('/app.js');
-  const isSeedScript=url.pathname.endsWith('/data/seed-data.js');
+  const isSeedScript=url.pathname.endsWith('/data/seed-data.js')||url.pathname.endsWith('/data/candy-seed.js');
   if(isDocument||isCSS||isAppScript||isSeedScript){
     const cacheKey=isCSS?'./styles.css':isAppScript?'./app.js'
-      :isSeedScript?'./data/seed-data.js':'./index.html';
+      :isSeedScript?(url.pathname.endsWith('/data/candy-seed.js')?'./data/candy-seed.js':'./data/seed-data.js'):'./index.html';
     event.respondWith((async()=>{
       try{
         const response=await fetch(req,{cache:'no-store'});
