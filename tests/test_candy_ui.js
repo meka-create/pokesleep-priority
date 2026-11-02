@@ -12,7 +12,7 @@ const state={master:structuredClone(master),candyMaster:candy,candyRatings:{},
 const levels=[{id:'use',label:'優先投入'},{id:'candidate',label:'投入候補'},
   {id:'hold',label:'保留'},{id:'save',label:'温存'}];
 const context=vm.createContext({
- state,CANDY_IDS:new Set(levels.map(x=>x.id)),CANDY_LEVELS:levels,
+ state,KEYS:{candy:'candy'},CANDY_IDS:new Set(levels.map(x=>x.id)),CANDY_LEVELS:levels,
  CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス'},
  getPokemon:()=>state.master.pokemon,
  normalize:s=>String(s||'').normalize('NFKC').toLowerCase(),
