@@ -49,6 +49,13 @@ assert.ok(html.includes('data-tab="candy"'));
 assert.ok(html.includes('id="candy-details"'));
 assert.ok(html.includes('src="./data/candy-seed.js"'));
 assert.ok(style.includes('.candy-item'));
+for(const type of allTypes)assert.ok(style.includes('.candy-type-tag[data-type="'+type+'"]'),
+ 'Missing colored badge style for '+type);
+assert.ok(style.includes('color:var(--candy-accent)'));
+assert.ok(app.includes("previous.querySelector('.candy-type-tag')?.dataset.type==="),
+ 'Retained candy cards must update when a type changes');
+assert.ok(!app.includes("if(candyType!=='all'&&f.type!==candyType)"),
+ 'Removed type filtering must not apply silently');
 assert.ok(app.includes("candy:'gense-note-candy-priorities-v1'"));
 assert.ok(app.includes('function mergeCandyMaster(incoming)'));
 assert.ok(app.includes("if(state.prefs.tab==='candy'){renderCandyResults(el);discoverSprites();return}"));
