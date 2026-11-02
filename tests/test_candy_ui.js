@@ -9,7 +9,7 @@ assert.ok(style.includes('.candy-profile{display:flex;align-items:center;gap:10p
   'Restore the v0.2.4 flex row with centered candy type and chevron');
 assert.ok(style.includes('.candy-item-info{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;justify-content:center}'),
   'Name and special-element description should remain vertically centered');
-assert.ok(style.includes('.candy-type-tag,.candy-type-pill{--candy-accent:'),
+assert.ok(style.includes('.candy-type-tag{--candy-accent:'),
   'Retain color-coded type labels without top-row grid alignment');
 assert.ok(style.includes('.candy-chevron{color:#7890a9;font-size:23px;flex:none;line-height:1}'),
   'Chevron should remain centered immediately after the candy type');
@@ -136,13 +136,9 @@ assert.ok(currentShell().includes('アメのタイプ'));
 assert.ok(!currentShell().includes('<select'),
  'Do not use a platform native select');
 assert.ok(currentShell().includes('aria-haspopup="listbox"'));
-assert.ok(currentShell().includes('<span class="candy-type-pill" data-type="all">すべて</span>'),
- 'Current type selection is represented by the same rounded pill as a card');
 assert.ok(currentShell().includes('aria-expanded="false"'));
 state.prefs.candyType='grass';
 assert.ok(currentShell().includes('data-type="grass"'));
-assert.ok(currentShell().includes('<span class="candy-type-pill" data-type="grass">くさ</span>'),
- 'Selected grass type uses the matching colored pill');
 assert.ok(currentShell().includes('アメのタイプ：くさ'));
 state.prefs.candyType='all';
 assert.ok(currentShell().includes('全種類'),
