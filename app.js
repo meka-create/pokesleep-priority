@@ -549,7 +549,10 @@
       const previous=saved.card;
       if(previous.dataset.grade===fresh.dataset.grade &&
          previous.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent===
-         fresh.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent){
+         fresh.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent &&
+         (!fresh.classList.contains('candy-item') ||
+           previous.querySelector('.candy-item-info small')?.textContent===
+           fresh.querySelector('.candy-item-info small')?.textContent)){
         fresh.replaceWith(previous); // Preserve the whole unchanged card.
         retainCard(key,previous);
       }else{
