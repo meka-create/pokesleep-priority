@@ -12,10 +12,11 @@
   <link rel="icon" type="image/png" sizes="48x48" href="./assets/favicon-48.png?v=018">
   <link rel="apple-touch-icon" href="./assets/apple-touch-icon.png?v=018">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./styles.css?v=0.1.25">
+  <link rel="stylesheet" href="./styles.css?v=0.2.0">
   <title>厳選ノート | Pokémon Sleep</title>
   <script src="./data/seed-data.js" defer></script>
-  <script src="./app.js?v=0.1.26" defer></script>
+  <script src="./data/candy-seed.js" defer></script>
+  <script src="./app.js?v=0.2.0" defer></script>
 </head>
 <body>
 <div class="shell">
@@ -29,9 +30,11 @@
   <nav class="bottom-nav" aria-label="メインメニュー">
     <button type="button" class="nav-button active" data-action="tab" data-tab="dex"><span aria-hidden="true">▦</span><span>図鑑</span></button>
     <button type="button" class="nav-button" data-action="tab" data-tab="search"><span aria-hidden="true">⌕</span><span>評価検索</span></button>
+    <button type="button" class="nav-button" data-action="tab" data-tab="candy"><span aria-hidden="true">◇</span><span>ウッウロボ</span></button>
   </nav>
 </div>
 <dialog class="center-dialog" id="details"><div id="details-body"></div></dialog>
+<dialog class="center-dialog" id="candy-details"><div id="candy-details-body"></div></dialog>
 <dialog class="bottom-sheet" id="settings-dialog"><div id="settings-body"></div></dialog>
 <input type="file" id="icon-input" accept="image/png,image/jpeg,image/webp" hidden>
 <input type="file" id="restore-input" accept="application/json,.json" hidden>
