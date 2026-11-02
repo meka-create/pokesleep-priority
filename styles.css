@@ -200,6 +200,10 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .candy-tier-choice[data-value="hold"].active{background:#493e5e;border-color:#a48acb;color:#e4d3ff}
 .candy-tier-choice[data-value="save"].active{background:#503b46;border-color:#d1a1ad;color:#f4c6d0}
 .candy-tier-choice:not(.active) .candy-tier-symbol{opacity:.7}
+.candy-type-filter{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.candy-type-filter .candy-filter-label{margin:0;flex:none}
+.candy-type-filter select{min-width:0;width:185px;max-width:65%;min-height:39px;border-radius:11px;padding:7px 34px 7px 12px;border:1px solid #476078;background:#1b2d40;color:#e8f0f7;font-size:13px;font-weight:750;cursor:pointer}
+.candy-type-filter select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .candy-special-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .candy-special-mode{border:1px solid #476078;background:#1b2d40;border-radius:12px;min-height:38px;color:#c4d2df;font-size:12px;font-weight:800;touch-action:manipulation}
 .candy-special-mode.active{background:#f4c862;border-color:#f4c862;color:#182535}
