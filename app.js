@@ -88,10 +88,13 @@
   })():base;
   const master={...combinedMaster,pokemon:canonicalizePokemon(combinedMaster.pokemon)};
   function validCandyMaster(value){
-    if(!value||value.schema!==3||!Array.isArray(value.families)||value.families.length<70)return false;
+    if(!value||value.schema!==3||!Array.isArray(value.families)||value.families.length<70
+      ||typeof value.updatedAt!=='string'||!Number.isFinite(Date.parse(value.updatedAt)))return false;
     const keys=new Set(),members=new Set();
     for(const f of value.families){
-      if(!Number.isInteger(f.id)||f.id<1||keys.has(f.id)||!Number.isInteger(f.labelId)
+      // Treat malformed/corrupted snapshots as invalid, never crash startup.
+      if(!f||typeof f!=='object'||Array.isArray(f)
+        ||!Number.isInteger(f.id)||f.id<1||keys.has(f.id)||!Number.isInteger(f.labelId)
         ||!Array.isArray(f.members)||!f.members.includes(f.labelId)
         ||!f.special||typeof f.special!=='object'||!Object.hasOwn(CANDY_TYPES,f.type))return false;
       keys.add(f.id);

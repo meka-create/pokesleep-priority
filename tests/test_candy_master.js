@@ -7,6 +7,36 @@ const pokemon=JSON.parse(read('data/master.json')).pokemon;
 const candy=JSON.parse(read('data/candy-master.json'));
 const seed=read('data/candy-seed.js');
 assert.equal(candy.schema,3);
+// The cached/upstream candy master is untrusted: invalid data must return false,
+// not throw and prevent the bundled PWA from starting.
+const validatorSource=app.slice(app.indexOf('  function validCandyMaster(value){'),
+ app.indexOf('  const cachedCandy=fromLocal(KEYS.candyMaster,null);'));
+assert.ok(validatorSource.startsWith('  function validCandyMaster(value){'));
+const validatorCtx=vm.createContext({
+ CANDY_TYPES:{normal:'ノーマル',fire:'ほのお',water:'みず',electric:'でんき',grass:'くさ',
+  ice:'こおり',fighting:'かくとう',poison:'どく',ground:'じめん',flying:'ひこう',
+  psychic:'エスパー',bug:'むし',rock:'いわ',ghost:'ゴースト',dragon:'ドラゴン',
+  dark:'あく',steel:'はがね',fairy:'フェアリー'},
+ CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',
+  legendary:'伝説・幻',evolution:'追加進化待ち'},
+ Date,Number,Object,Array,Set
+});
+vm.runInContext(validatorSource,validatorCtx);
+const validateCandy=vm.runInContext('validCandyMaster',validatorCtx);
+assert.equal(validateCandy(candy),true,'Current bundled candy master must validate');
+for(const mutate of [
+ x=>{x.families[0]=null},
+ x=>{x.families[0]=false},
+ x=>{x.families[0]=[]},
+ x=>{x.updatedAt='not-a-date'},
+ x=>{delete x.updatedAt},
+ x=>{x.updatedAt=123456789}
+]){
+ const corrupted=structuredClone(candy);
+ mutate(corrupted);
+ assert.doesNotThrow(()=>validateCandy(corrupted),'Damaged candy input must not throw');
+ assert.equal(validateCandy(corrupted),false,'Malformed candy master must be rejected safely');
+}
 assert.ok(candy.families.length>=108,'candy families must include current full Sleep master, not old ZIP');
 assert.equal(new Set(candy.families.map(f=>f.id)).size,candy.families.length);
 const allTypes=new Set(['normal','fire','water','electric','grass','ice','fighting','poison','ground',
