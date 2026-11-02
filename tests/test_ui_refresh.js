@@ -9,7 +9,7 @@ assert.ok(!app.includes('data-preset="rated"'));
 assert.ok(app.includes('data-preset="none"'));
 assert.ok(app.includes('state.prefs.searchGrades=[]'));
 assert.ok(app.includes('updateRatedCounter()'));
-assert.equal((app.match(/placeholder="検索"/g)||[]).length,2);
+assert.equal((app.match(/placeholder="検索"/g)||[]).length,3);
 for(const emoji of ['🌙','💤','💧'])assert.ok(!app.includes(emoji));
 assert.ok(!app.includes('ICONS[i]'));
 assert.ok(!app.includes('島ごと・優先度ごとに厳選対象を確認'));
@@ -30,8 +30,8 @@ for(const landscape of ['amber-landscape','greengrass-ex','cyan-ex']){
 }
 assert.ok(css.includes('data-area-panel="7"]{--field-art:url(\'./assets/field-greengrass-ex.jpg\')'));
 assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cyan-ex.jpg\')'));
-assert.ok(html.includes('href="./styles.css?v=0.2.0"'),"CSS must be versioned against stale PWA cache");
-assert.ok(html.includes('src="./app.js?v=0.2.0"'),"new app script must bypass stale browser cache");
+assert.ok(html.includes('href="./styles.css?v=0.2.1"'),"CSS must be versioned against stale PWA cache");
+assert.ok(html.includes('src="./app.js?v=0.2.1"'),"new app script must bypass stale browser cache");
 assert.ok(sw.includes("const isDocument=req.mode==='navigate'"),"navigation must bypass stale HTML cache");
 assert.ok(sw.includes("const isCSS=url.pathname.endsWith('/styles.css')"),"CSS must refresh even with installed PWA");
 assert.ok(sw.includes("const isAppScript=url.pathname.endsWith('/app.js')"),"app logic must update online");
