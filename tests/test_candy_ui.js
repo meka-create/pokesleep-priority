@@ -18,7 +18,7 @@ const context=vm.createContext({
  normalize:s=>String(s||'').normalize('NFKC').toLowerCase(),
  iconMarkup:p=>'<div class="pokemon-icon"><img alt="" src="/'+p.id+'.png"></div>',
  htmlEscape:s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'),
- patchResults:(_,mark)=>{html=mark},chips:()=>'<div></div>',
+ patchResults:(_,mark)=>{html=mark},chips:(items,value,action)=>'<div>'+items.map(x=>'<button data-action="'+action+'">'+x.text+'</button>').join('')+'</div>',
  $:()=>({set innerHTML(v){dialog=v}}),
  setLocal:(_,payload)=>{saved=payload;return true},
  tabPanels:new Map(),renderResults:()=>updates++,updateRatedCounter:()=>settingsCount++,
@@ -69,7 +69,7 @@ assert.ok(!currentShell().includes('data-action="candy-kind-filter"'),"Special-k
 state.prefs.candySpecial='any';
 assert.ok(currentShell().includes('data-action="candy-kind-filter"'),"Special-kind filter must show only for 'あり'");
 assert.ok(currentShell().includes('placeholder="検索"'));
-assert.ok(currentShell().includes('◎ 優先投入'));
+assert.ok(currentShell().includes('<strong>◎</strong> 優先投入'));
 state.prefs.candySpecial='all';state.prefs.search='ピチュー';render({});
 assert.ok(html.includes('ピカチュウのアメ'),'match by any family member name');
 state.prefs.search='';
