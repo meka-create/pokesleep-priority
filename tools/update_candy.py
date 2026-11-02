@@ -81,7 +81,7 @@ def build(master, species, forms, date=None):
     validate(result,master)
     return result
 
-def validate(result,master):
+def validate(result,master,require_coverage=True):
     if result.get('schema')!=1 or not isinstance(result.get('families'),list):
         raise ValueError('Broken candy master schema')
     families=result['families']
@@ -99,7 +99,7 @@ def validate(result,master):
         if any(not isinstance(kinds[k],list) or kinds[k]!=sorted(set(kinds[k]))
                or any(not isinstance(i,int) or i<1 for i in kinds[k]) for k in KINDS):
             raise ValueError('Invalid special form entries')
-    if set(mapping)!={int(p['id']) for p in master['pokemon']}:
+    if require_coverage and set(mapping)!={int(p['id']) for p in master['pokemon']}:
         raise ValueError('Incomplete or extra master membership')
     by_root={f['id']:f for f in families}
     pikachu=by_root.get(172)
@@ -113,7 +113,7 @@ def validate(result,master):
 def main():
     old=json.loads(CANDY.read_text('utf-8')) if CANDY.exists() else None
     master=json.loads(MONS.read_text('utf-8'))
-    if old:validate(old,master)  # Existing master must remain safe.
+    if old:validate(old,master,require_coverage=False)  # New Sleep species may precede this snapshot.
     try:
         result=build(master,fetch_csv('pokemon_species.csv'),fetch_csv('pokemon.csv'))
     except Exception as e:
