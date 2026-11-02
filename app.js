@@ -15,7 +15,7 @@
   const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
-  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all',candyKind:'all',candyType:'all'};
+  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all',candyKind:'all'};
   // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
   const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
   const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
@@ -125,7 +125,8 @@
   }
   if(!['all','any','none'].includes(prefs.candySpecial))prefs.candySpecial='all';
   if(!['all',...Object.keys(CANDY_KINDS)].includes(prefs.candyKind))prefs.candyKind='all';
-  if(prefs.candyType!=='all'&&!Object.hasOwn(CANDY_TYPES,prefs.candyType))prefs.candyType='all';
+  // Retired v0.2.3 type filters must never hide candies after the control is removed.
+  delete prefs.candyType;
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
   // Migrate v0.1.2's onlyRated preference without changing any stored ratings.
   // An explicitly saved empty array means 'show no grades', not 'reset filter'.
@@ -376,9 +377,9 @@
     return groups;
   }
   function candyBadge(f){
-    if(f.unknown)return 'アメのタイプ・特殊要素：未確認';
+    if(f.unknown)return '特殊要素：未確認';
     const kinds=Object.entries(CANDY_KINDS).filter(([key])=>f.special[key]?.length).map(([,label])=>label);
-    return (CANDY_TYPES[f.type]||'タイプ未確認')+' / '+(kinds.length?kinds.join(' / '):'特殊要素なし');
+    return kinds.length?kinds.join(' / '):'特殊要素なし';
   }
   function candyShell(){
     const tierOptions=[{id:'all',symbol:'すべて',label:'すべて'},
@@ -395,24 +396,19 @@
         +'<span class="candy-tier-symbol">'+htmlEscape(t.symbol)+'</span>'
         +(t.id==='all'||t.id==='none'?'':'<span class="candy-tier-name">'+htmlEscape(t.label)+'</span>')
         +'</button>').join('')+'</div>'
-      +'<div class="candy-type-filter"><label class="candy-filter-label" for="candy-type-select">アメのタイプ</label>'
-      +'<select id="candy-type-select" data-action="candy-type-filter" aria-label="アメのタイプで絞り込み">'
-      +'<option value="all">すべて</option>'
-      +Object.entries(CANDY_TYPES).map(([value,label])=>'<option value="'+value+'"'
-        +(state.prefs.candyType===value?' selected':'')+'>'+label+'</option>').join('')
-      +'</select></div>'
       +'<div class="candy-filter-label">特殊要素</div>'
       +'<div class="candy-special-modes" role="group" aria-label="特殊要素の有無">'
       +modes.map(m=>'<button type="button" class="candy-special-mode'+(selected===m.id?' active':'')+'"'
         +' data-action="candy-special-filter" data-value="'+m.id+'" aria-pressed="'+(selected===m.id)+'">'+m.label+'</button>').join('')+'</div>'
       +(selected==='any'?'<div class="candy-kind-filter"><div class="candy-filter-label">種類</div>'
-        +chips([{id:'all',text:'全種類'},...Object.entries(CANDY_KINDS).map(([id,text])=>({id,text}))],
-          state.prefs.candyKind,'candy-kind-filter')+'</div>':'')
+        +'<div class="candy-kind-options" role="group" aria-label="特殊要素の種類。再タップで選択解除">'
+        +chips(Object.entries(CANDY_KINDS).map(([id,text])=>({id,text})),
+          state.prefs.candyKind,'candy-kind-filter')+'</div></div>':'')
       +'</section><div id="results"></div>';
   }
   function renderCandyResults(el){
     const search=normalize(state.prefs.search),tier=state.prefs.candyTier;
-    const special=state.prefs.candySpecial,kind=state.prefs.candyKind,candyType=state.prefs.candyType;
+    const special=state.prefs.candySpecial,kind=state.prefs.candyKind;
     const order={use:0,candidate:1,hold:2,save:3,none:4};
     const groups=candyFamilies().filter(f=>{
       if(search&&!normalize(f.label).includes(search)
@@ -421,7 +417,6 @@
         &&!String(f.id).startsWith(search))return false;
       const value=candyChoice(f.key);
       if(tier!=='all'&&tier!==value)return false;
-      if(candyType!=='all'&&f.type!==candyType)return false;
       const hasAny=Object.keys(CANDY_KINDS).some(k=>f.special[k]?.length);
       if(special==='any'&&(!hasAny||(kind!=='all'&&!f.special[kind]?.length)))return false;
       if(special==='none'&&(hasAny||f.unknown))return false;
@@ -436,6 +431,8 @@
           +' aria-label="'+name+'の詳細とアメを共有するポケモン">'+iconMarkup(f.representative)
           +'<span class="candy-item-info"><strong class="candy-name">'+name+'</strong>'
           +'<small>'+htmlEscape(candyBadge(f))+'</small></span>'
+          +'<span class="candy-type-tag" data-type="'+(Object.hasOwn(CANDY_TYPES,f.type)?f.type:'unknown')+'">'
+          +htmlEscape(CANDY_TYPES[f.type]||'未確認')+'</span>'
           +'<span class="candy-chevron" aria-hidden="true">›</span></button>'
           +'<div class="candy-quick-grades" role="group" aria-label="'+name+'の投入優先度">'
           +CANDY_LEVELS.map(level=>{
@@ -596,7 +593,9 @@
          fresh.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent &&
          (!fresh.classList.contains('candy-item') ||
            previous.querySelector('.candy-item-info small')?.textContent===
-           fresh.querySelector('.candy-item-info small')?.textContent)){
+           fresh.querySelector('.candy-item-info small')?.textContent &&
+           previous.querySelector('.candy-type-tag')?.dataset.type===
+           fresh.querySelector('.candy-type-tag')?.dataset.type)){
         fresh.replaceWith(previous); // Preserve the whole unchanged card.
         retainCard(key,previous);
       }else{
@@ -981,7 +980,10 @@
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
     if(action==='candy-tier-filter'){state.prefs.candyTier=b.dataset.value;save();render()}
     if(action==='candy-special-filter'&&['all','any','none'].includes(b.dataset.value)){state.prefs.candySpecial=b.dataset.value;save();render()}
-    if(action==='candy-kind-filter'&&['all',...Object.keys(CANDY_KINDS)].includes(b.dataset.value)){state.prefs.candyKind=b.dataset.value;save();render()}
+    if(action==='candy-kind-filter'&&Object.hasOwn(CANDY_KINDS,b.dataset.value)){
+      state.prefs.candyKind=state.prefs.candyKind===b.dataset.value?'all':b.dataset.value;
+      save();render();
+    }
     if(action==='upload-icon')$('#icon-input').click();
     if(action==='reset-icon'&&state.selected)await setIcon(state.selected,null);
     if(action==='reset-islands'&&state.selected){
@@ -1004,13 +1006,6 @@
   });
   document.addEventListener('change',ev=>{
     const b=ev.target;
-    if(b.dataset.action==='candy-type-filter'){
-      const next=b.value;
-      if(next==='all'||Object.hasOwn(CANDY_TYPES,next)){
-        state.prefs.candyType=next;save();render();
-      }
-      return;
-    }
     if(b.dataset.action==='island-toggle'&&state.selected){
       const p=selected(),idx=Number(b.dataset.island);
       if(!p||!Number.isInteger(idx))return;
