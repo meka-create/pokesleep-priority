@@ -6,13 +6,13 @@
   // Field header imagery is hosted in the app itself, not fetched on each visit.
   const LEVELS=[{id:'star',symbol:'☆',label:'最優先'},{id:'double',symbol:'◎',label:'高優先'},{id:'circle',symbol:'○',label:'優先'},{id:'triangle',symbol:'△',label:'低優先'},{id:'cross',symbol:'×',label:'不要'}];
   const GRADE_IDS=new Set(LEVELS.map(x=>x.id));
-  const CANDY_LEVELS=[{id:'use',label:'優先投入'},{id:'candidate',label:'投入候補'},{id:'hold',label:'保留'},{id:'save',label:'温存'}];
+  const CANDY_LEVELS=[{id:'use',symbol:'◎',label:'優先投入'},{id:'candidate',symbol:'○',label:'投入候補'},{id:'hold',symbol:'△',label:'保留'},{id:'save',symbol:'×',label:'温存'}];
   const CANDY_IDS=new Set(CANDY_LEVELS.map(x=>x.id));
   const CANDY_KINDS={regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス'};
   const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
-  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all'};
+  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all',candyKind:'all'};
   // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
   const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
   const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
@@ -114,7 +114,14 @@
   const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};
   if(!['dex','search','candy'].includes(prefs.tab))prefs.tab='dex';
   if(!['all',...CANDY_LEVELS.map(x=>x.id),'none'].includes(prefs.candyTier))prefs.candyTier='all';
-  if(!['all',...Object.keys(CANDY_KINDS),'any','none'].includes(prefs.candySpecial))prefs.candySpecial='all';
+  // Old v0.2.0 saved a special-form TYPE in candySpecial. Preserve that
+  // selection when migrating to the separate "presence" / "kind" filters.
+  if(Object.hasOwn(CANDY_KINDS,prefs.candySpecial)){
+    prefs.candyKind=prefs.candySpecial;
+    prefs.candySpecial='any';
+  }
+  if(!['all','any','none'].includes(prefs.candySpecial))prefs.candySpecial='all';
+  if(!['all',...Object.keys(CANDY_KINDS)].includes(prefs.candyKind))prefs.candyKind='all';
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
   // Migrate v0.1.2's onlyRated preference without changing any stored ratings.
   // An explicitly saved empty array means 'show no grades', not 'reset filter'.
@@ -367,21 +374,34 @@
   function candyBadge(f){
     if(f.unknown)return '特殊形態：未確認';
     const kinds=Object.entries(CANDY_KINDS).filter(([key])=>f.special[key]?.length).map(([,label])=>label);
-    return kinds.length?kinds.join(' / '):'特殊形態なし（取得元の範囲）';
+    return kinds.length?kinds.join(' / '):'特殊形態なし';
   }
   function candyShell(){
-    const tiers=[{id:'all',text:'すべて'},...CANDY_LEVELS.map(t=>({id:t.id,text:t.label})),{id:'none',text:'未設定'}];
-    const specials=[{id:'all',text:'すべて'},{id:'any',text:'特殊形態あり'},
-      ...Object.entries(CANDY_KINDS).map(([id,text])=>({id,text})),
-      {id:'none',text:'特殊形態なし'}];
+    const tierOptions=[{id:'all',symbol:'すべて',label:'すべて'},
+      ...CANDY_LEVELS,{id:'none',symbol:'未設定',label:'未設定'}];
+    const modes=[{id:'all',label:'すべて'},{id:'any',label:'あり'},{id:'none',label:'なし'}];
+    const selected=state.prefs.candySpecial;
     return '<section class="toolbar candy-toolbar" aria-label="ウッウロボ絞り込み">'
-      +'<input class="search-input" id="search" type="search" placeholder="ポケモン・アメを検索" value="'+htmlEscape(state.prefs.search)+'" autocomplete="off">'
-      +'<div class="candy-filter-label">投入優先度</div>'+chips(tiers,state.prefs.candyTier,'candy-tier-filter')
-      +'<div class="candy-filter-label">特殊形態</div>'+chips(specials,state.prefs.candySpecial,'candy-special-filter')
+      +'<input class="search-input" id="search" type="search" placeholder="検索" value="'+htmlEscape(state.prefs.search)+'" autocomplete="off">'
+      +'<div class="candy-filter-label">投入優先度</div>'
+      +'<div class="candy-tier-filters" role="group" aria-label="投入優先度で絞り込み">'
+      +tierOptions.map(t=>'<button type="button" class="chip candy-tier-filter'+(state.prefs.candyTier===t.id?' active':'')+'"'
+        +' data-action="candy-tier-filter" data-value="'+t.id+'" title="'+htmlEscape(t.label)+'"'
+        +' aria-label="'+htmlEscape(t.symbol+' '+t.label)+'" aria-pressed="'+(state.prefs.candyTier===t.id)+'">'+htmlEscape(t.symbol)+'</button>').join('')+'</div>'
+      +'<div class="candy-tier-legend" aria-label="投入優先度の記号">'
+      +CANDY_LEVELS.map(t=>'<span><strong>'+t.symbol+'</strong> '+t.label+'</span>').join('')+'</div>'
+      +'<div class="candy-filter-label">特殊形態</div>'
+      +'<div class="candy-special-modes" role="group" aria-label="特殊形態の有無">'
+      +modes.map(m=>'<button type="button" class="candy-special-mode'+(selected===m.id?' active':'')+'"'
+        +' data-action="candy-special-filter" data-value="'+m.id+'" aria-pressed="'+(selected===m.id)+'">'+m.label+'</button>').join('')+'</div>'
+      +(selected==='any'?'<div class="candy-kind-filter"><div class="candy-filter-label">特殊形態の種類</div>'
+        +chips([{id:'all',text:'全種類'},...Object.entries(CANDY_KINDS).map(([id,text])=>({id,text}))],
+          state.prefs.candyKind,'candy-kind-filter')+'</div>':'')
       +'</section><div id="results"></div>';
   }
   function renderCandyResults(el){
-    const search=normalize(state.prefs.search),tier=state.prefs.candyTier,special=state.prefs.candySpecial;
+    const search=normalize(state.prefs.search),tier=state.prefs.candyTier;
+    const special=state.prefs.candySpecial,kind=state.prefs.candyKind;
     const order={use:0,candidate:1,hold:2,save:3,none:4};
     const groups=candyFamilies().filter(f=>{
       if(search&&!normalize(f.label).includes(search)
@@ -391,21 +411,29 @@
       const value=candyChoice(f.key);
       if(tier!=='all'&&tier!==value)return false;
       const hasAny=Object.keys(CANDY_KINDS).some(k=>f.special[k]?.length);
-      if(special==='any'&&!hasAny)return false;
+      if(special==='any'&&(!hasAny||(kind!=='all'&&!f.special[kind]?.length)))return false;
       if(special==='none'&&(hasAny||f.unknown))return false;
-      if(special in CANDY_KINDS&&!f.special[special]?.length)return false;
       return true;
     }).sort((a,b)=>order[candyChoice(a.key)]-order[candyChoice(b.key)]
       ||a.representative.id-b.representative.id);
     const markup='<div class="section-top"><h3>アメ一覧</h3><span>'+groups.length+'件</span></div>'
       +(groups.length?'<div class="candy-list">'+groups.map(f=>{
-        const tier=candyChoice(f.key);
-        const label=CANDY_LEVELS.find(x=>x.id===tier)?.label||'未設定';
-        return '<button type="button" class="candy-item" data-action="candy-detail" data-family-id="'+htmlEscape(f.key)+'" data-grade="'+tier+'">'
-          +iconMarkup(f.representative)
-          +'<span class="candy-item-info"><strong class="candy-name">'+htmlEscape(f.label)+'</strong>'
+        const tier=candyChoice(f.key),key=htmlEscape(f.key),name=htmlEscape(f.label);
+        return '<article class="candy-item" data-family-id="'+key+'" data-grade="'+tier+'">'
+          +'<button type="button" class="candy-profile" data-action="candy-detail" data-family-id="'+key+'"'
+          +' aria-label="'+name+'の詳細とアメを共有するポケモン">'+iconMarkup(f.representative)
+          +'<span class="candy-item-info"><strong class="candy-name">'+name+'</strong>'
           +'<small>'+htmlEscape(candyBadge(f))+'</small></span>'
-          +'<span class="candy-status" data-candy-tier="'+tier+'">'+htmlEscape(label)+'</span></button>';
+          +'<span class="candy-chevron" aria-hidden="true">›</span></button>'
+          +'<div class="candy-quick-grades" role="group" aria-label="'+name+'の投入優先度">'
+          +CANDY_LEVELS.map(level=>{
+            const active=tier===level.id;
+            return '<button type="button" class="candy-quick-grade'+(active?' active':'')+'"'
+              +' data-action="candy-quick-rate" data-family-id="'+key+'" data-tier="'+level.id+'"'
+              +' aria-pressed="'+active+'"'
+              +' aria-label="'+name+'：'+level.symbol+'（'+level.label+'）'+(active?'を解除':'に設定')+'"'
+              +' title="'+level.label+(active?'（もう一度押すと解除）':'')+'">'+level.symbol+'</button>';
+          }).join('')+'</div></article>';
       }).join('')+'</div>':'<div class="empty-state">該当するアメがありません</div>');
     patchResults(el,markup);
   }
@@ -422,7 +450,7 @@
       +'<p class="candy-family-members">'+htmlEscape(names)+'</p>'
       +'<p class="field-label">投入優先度</p>'
       +'<div class="candy-level-options">'+CANDY_LEVELS.map(level=>
-        '<button type="button" class="candy-level-choice" data-action="candy-rate" data-tier="'+level.id+'" aria-pressed="'+(tier===level.id)+'">'+level.label+'</button>'
+        '<button type="button" class="candy-level-choice" data-action="candy-rate" data-tier="'+level.id+'" aria-pressed="'+(tier===level.id)+'"><span class="candy-level-symbol">'+level.symbol+'</span><span>'+level.label+'</span></button>'
       ).join('')+'</div>'
       +'<button type="button" class="secondary-button candy-unset" data-action="candy-rate" data-tier="none">未設定に戻す</button>';
   }
@@ -432,9 +460,13 @@
     if(tier==='none')delete updated[id];else updated[id]=tier;
     if(!setLocal(KEYS.candy,updated))return;
     state.candyRatings=updated;
-    tabPanels.delete('candy');
     renderResults();updateRatedCounter();dialogClose('#candy-details');
     toast(tier==='none'?'未設定に戻しました':'投入優先度を設定しました');
+  }
+  function quickCandyRate(button){
+    const id=button.dataset.familyId,requested=button.dataset.tier;
+    if(!CANDY_IDS.has(requested)||!candyFamilies().some(f=>f.key===id))return;
+    setCandyChoice(id,candyChoice(id)===requested?'none':requested);
   }
   function chips(options,value,action,attr='value'){return `<div class="chips">${options.map(x=>`<button type="button" class="chip ${value===x.id?'active':''}" data-action="${action}" data-${attr}="${htmlEscape(x.id)}" ${x.grade?`data-grade="${x.grade}"`:''} aria-pressed="${value===x.id?'true':'false'}">${x.text}</button>`).join('')}</div>`}
   function filterPokemon(){const {search,sleep,grade:filterGrade}=state.prefs;const prefix=normalize(search);return getPokemon().filter(p=>{
@@ -923,6 +955,7 @@
     if(action==='pokemon'){state.selected=b.dataset.key;details();dialogOpen('#details');activateDetailSprite()}
     if(action==='quick-rate')quickRate(b)
     if(action==='candy-detail'){state.selectedCandy=b.dataset.familyId;candyDetails();dialogOpen('#candy-details')}
+    if(action==='candy-quick-rate')quickCandyRate(b);
     if(action==='close-candy')dialogClose('#candy-details');
     if(action==='candy-rate')setCandyChoice(state.selectedCandy,b.dataset.tier);
     if(action==='settings'){settings();dialogOpen('#settings-dialog')}
@@ -935,7 +968,8 @@
     if(action==='search-grade-preset'){if(b.dataset.preset==='all')state.prefs.searchGrades=[...SEARCH_GRADE_IDS];else if(b.dataset.preset==='none')state.prefs.searchGrades=[];else return;save();render()}
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
     if(action==='candy-tier-filter'){state.prefs.candyTier=b.dataset.value;save();render()}
-    if(action==='candy-special-filter'){state.prefs.candySpecial=b.dataset.value;save();render()}
+    if(action==='candy-special-filter'&&['all','any','none'].includes(b.dataset.value)){state.prefs.candySpecial=b.dataset.value;save();render()}
+    if(action==='candy-kind-filter'&&['all',...Object.keys(CANDY_KINDS)].includes(b.dataset.value)){state.prefs.candyKind=b.dataset.value;save();render()}
     if(action==='upload-icon')$('#icon-input').click();
     if(action==='reset-icon'&&state.selected)await setIcon(state.selected,null);
     if(action==='reset-islands'&&state.selected){
