@@ -860,10 +860,9 @@
     const newer=Date.parse(incoming.updatedAt||'');
     if(Number.isFinite(older)&&Number.isFinite(newer)&&newer<older)return false;
     if(JSON.stringify(state.candyMaster?.families)===JSON.stringify(incoming.families))return true;
-    if(!setLocal(KEYS.candyMaster,incoming))return false;
-    state.candyMaster=incoming;
-    // Preserve choices made while a newly released species awaited mapping.
-    const changed={...state.candyRatings},migration=new Map();
+    // A new species may have been temporarily shown as "unconfirmed".
+    // Complete its saved-priority migration BEFORE switching the mapping.
+    const priorChoices=state.candyRatings,changed={...priorChoices},migration=new Map();
     for(const f of incoming.families)for(const id of f.members)migration.set(id,String(f.id));
     for(const [key,value] of Object.entries(changed)){
       const match=/^pending:(\d+)$/.exec(key);
@@ -873,8 +872,14 @@
       if(!CANDY_IDS.has(changed[target]))changed[target]=value;
       delete changed[key];
     }
-    if(JSON.stringify(changed)!==JSON.stringify(state.candyRatings)
-      &&setLocal(KEYS.candy,changed))state.candyRatings=changed;
+    const choicesChanged=JSON.stringify(changed)!==JSON.stringify(priorChoices);
+    if(choicesChanged&&!setLocal(KEYS.candy,changed))return false;
+    if(!setLocal(KEYS.candyMaster,incoming)){
+      if(choicesChanged)setLocal(KEYS.candy,priorChoices);
+      return false;
+    }
+    state.candyMaster=incoming;
+    if(choicesChanged)state.candyRatings=changed;
     if(state.prefs.tab==='candy')render();
     return true;
   }
