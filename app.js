@@ -433,7 +433,7 @@
     if(!setLocal(KEYS.candy,updated))return;
     state.candyRatings=updated;
     tabPanels.delete('candy');
-    renderResults();dialogClose('#candy-details');
+    renderResults();updateRatedCounter();dialogClose('#candy-details');
     toast(tier==='none'?'未設定に戻しました':'投入優先度を設定しました');
   }
   function chips(options,value,action,attr='value'){return `<div class="chips">${options.map(x=>`<button type="button" class="chip ${value===x.id?'active':''}" data-action="${action}" data-${attr}="${htmlEscape(x.id)}" ${x.grade?`data-grade="${x.grade}"`:''} aria-pressed="${value===x.id?'true':'false'}">${x.text}</button>`).join('')}</div>`}
@@ -444,7 +444,14 @@
     return true;
   });}
   function countRated(){return getPokemon().filter(p=>grade(p.key)!=='none').length}
-  function updateRatedCounter(){const counter=$('#rated-count');if(counter)counter.textContent=countRated();const total=$('#total-count');if(total)total.textContent=getPokemon().length;}
+  function updateRatedCounter(){
+    const candy=state.prefs.tab==='candy',families=candy?candyFamilies():null;
+    const counted=candy?families.filter(f=>candyChoice(f.key)!=='none').length:countRated();
+    const counter=$('#rated-count'),total=$('#total-count'),label=$('.header-count > span');
+    if(counter)counter.textContent=counted;
+    if(total)total.textContent=candy?families.length:getPokemon().length;
+    if(label)label.textContent=candy?'設定済み':'評価済み';
+  }
   function warning(){if(state.master.areasReady)return '';const m=Object.keys(state.overrides).length;return `<div class="sync-notice">島別の出現マスターは未同期です。図鑑での評価は利用できます。${m?'手動登録した島のデータは表示できます。':''} GitHub Actionsの初回更新が成功すると自動で反映されます。 <button class="link-button" data-action="sync">更新を確認</button></div>`}
   function sleepFilter(){return `<div class="filter-line">${chips([{id:'all',text:'すべて'},...SLEEP_TYPES.map(t=>({id:t.id,text:sleepDot(t.id)+' '+t.id}))],state.prefs.sleep,'sleep')}</div>`}
   function dexShell(){const opts=[{id:'all',text:'すべて'},{id:'star',text:'☆',grade:'star'},{id:'double',text:'◎',grade:'double'},{id:'circle',text:'○',grade:'circle'},{id:'triangle',text:'△',grade:'triangle'},{id:'cross',text:'×',grade:'cross'},{id:'none',text:'未評価'}];return `<section class="toolbar" aria-label="図鑑絞り込み"><input class="search-input" id="search" type="search" placeholder="検索" value="${htmlEscape(state.prefs.search)}" autocomplete="off">${chips(opts,state.prefs.grade,'grade')}${sleepFilter()}</section><div id="results"></div>`}
