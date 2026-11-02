@@ -494,6 +494,8 @@
   const retainedCards=new Map(),MAX_RETAINED_CARDS=1100;
   const resultMarkup=new WeakMap(),islandPanelMarkup=new WeakMap();
   function retainedCardKey(card){
+    const candy=card.dataset.familyId;
+    if(card.classList.contains('candy-item'))return candy?'candy:'+candy:null;
     const species=card.dataset.key;
     if(!species)return null;
     if(card.classList.contains('mon-card'))return 'dex:'+species;
@@ -516,7 +518,7 @@
     if(resultMarkup.get(el)===markup)return; // No DOM updates if data is unchanged.
     const template=document.createElement('template');
     template.innerHTML=markup;
-    for(const card of el.querySelectorAll('.mon-card,.mini-mon')){
+    for(const card of el.querySelectorAll('.mon-card,.mini-mon,.candy-item')){
       const key=retainedCardKey(card);
       if(key)retainCard(key,card);
     }
@@ -532,15 +534,15 @@
         islandPanelMarkup.set(incoming,signature);
       }
     }
-    for(const fresh of template.content.querySelectorAll('.mon-card,.mini-mon')){
+    for(const fresh of template.content.querySelectorAll('.mon-card,.mini-mon,.candy-item')){
       const key=retainedCardKey(fresh);
       if(!key)continue;
       const saved=retainedCards.get(key),source=iconSignature(fresh);
       if(!saved||saved.card===fresh||saved.source!==source)continue; // Same island or changed icon.
       const previous=saved.card;
       if(previous.dataset.grade===fresh.dataset.grade &&
-         previous.querySelector('.mon-name,.mini-mon-name')?.textContent===
-         fresh.querySelector('.mon-name,.mini-mon-name')?.textContent){
+         previous.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent===
+         fresh.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent){
         fresh.replaceWith(previous); // Preserve the whole unchanged card.
         retainCard(key,previous);
       }else{
@@ -553,7 +555,9 @@
     el.replaceChildren(template.content);
     resultMarkup.set(el,markup);
   }
-  function renderResults(){const el=$('#results');if(!el)return;const all=filterPokemon();if(state.prefs.tab==='dex'){
+  function renderResults(){const el=$('#results');if(!el)return;
+    if(state.prefs.tab==='candy'){renderCandyResults(el);discoverSprites();return}
+    const all=filterPokemon();if(state.prefs.tab==='dex'){
     const markup=`<div class="section-top"><h3>図鑑一覧</h3><span>${all.length}件</span></div>`+(all.length?`<div class="dex-grid">${all.map(card).join('')}</div>`:`<div class="empty-state"><span class="symbol">⌕</span><strong>該当するポケモンがありません</strong>検索や絞り込みを変更してください。</div>`);
     patchResults(el,markup);
   }else renderSearchResults(el,all);
@@ -562,6 +566,7 @@
   // Keep the actual decoded <img> elements when switching tabs. Rebuilding
   // innerHTML on every tab switch detached all images and flashed placeholders.
   // Invalidate cached panels whenever ratings, icons, or master data change.
+  const shellForTab=()=>state.prefs.tab==='dex'?dexShell():state.prefs.tab==='candy'?candyShell():searchShell();
   const tabPanels=new Map();
   let currentPanelTab=null;
   function render(reusePanels=false,keepLeavingPanel=true){
@@ -571,7 +576,7 @@
     if(!reusePanels&&currentPanelTab===state.prefs.tab&&main.firstElementChild){
       const panel=main.firstElementChild,results=panel.querySelector('#results');
       const template=document.createElement('template');
-      template.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();
+      template.innerHTML=shellForTab();
       const freshResults=template.content.querySelector('#results');
       if(results&&freshResults)freshResults.replaceWith(results);
       panel.replaceChildren(template.content);
@@ -594,7 +599,7 @@
     if(!panel){
       panel=document.createElement('div');
       panel.dataset.tabPanel=state.prefs.tab;
-      panel.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();
+      panel.innerHTML=shellForTab();
       tabPanels.set(state.prefs.tab,panel);
     }
     main.append(panel);
@@ -671,7 +676,7 @@
     const counter=$('#rated-count');if(counter)counter.textContent=countRated();
   }
   function switchTab(tab){
-    if(!['dex','search'].includes(tab)||tab===state.prefs.tab)return;
+    if(!['dex','search','candy'].includes(tab)||tab===state.prefs.tab)return;
     // The search is reset on tab switches; never reuse a filtered panel.
     const keepLeavingPanel=!state.prefs.search;
     state.prefs.tab=tab;state.prefs.search='';save();
@@ -826,12 +831,40 @@
     const interval=previous.ok?6*60*60*1000:30*60*1000;
     return previous.slot!==slot||!Number.isFinite(age)||age<0||age>=interval;
   }
+  function mergeCandyMaster(incoming){
+    if(!validCandyMaster(incoming))return false;
+    const older=Date.parse(state.candyMaster?.updatedAt||'');
+    const newer=Date.parse(incoming.updatedAt||'');
+    if(Number.isFinite(older)&&Number.isFinite(newer)&&newer<older)return false;
+    if(JSON.stringify(state.candyMaster?.families)===JSON.stringify(incoming.families))return true;
+    if(!setLocal(KEYS.candyMaster,incoming))return false;
+    state.candyMaster=incoming;
+    // Preserve choices made while a newly released species awaited mapping.
+    const changed={...state.candyRatings},migration=new Map();
+    for(const f of incoming.families)for(const id of f.members)migration.set(id,String(f.id));
+    for(const [key,value] of Object.entries(changed)){
+      const match=/^pending:(\d+)$/.exec(key);
+      if(!match)continue;
+      const target=migration.get(Number(match[1]));
+      if(!target)continue;
+      if(!CANDY_IDS.has(changed[target]))changed[target]=value;
+      delete changed[key];
+    }
+    if(JSON.stringify(changed)!==JSON.stringify(state.candyRatings)
+      &&setLocal(KEYS.candy,changed))state.candyRatings=changed;
+    if(state.prefs.tab==='candy')render();
+    return true;
+  }
   async function refreshMaster(force=false){
     if(loadingMaster||!shouldCheckMaster(force))return;
     loadingMaster=true;
     const checkSlot=masterCheckSlot();
     const previousStatus=state.status;state.status='確認中';let errors=[];let newCount=0;let siteUpdate=false;
     try{const latest=await fetchJSON(`./data/master.json?v=${Date.now()}`);if(validMaster(latest)){newCount+=mergeMaster(latest);siteUpdate=true}else errors.push('公開マスターの検証に失敗')}catch(e){errors.push('公開マスターを取得できません')}
+    try{
+      const candy=await fetchJSON(`./data/candy-master.json?v=${Date.now()}`);
+      if(!mergeCandyMaster(candy))errors.push('アメマスターの検証に失敗');
+    }catch(e){errors.push('アメマスターを取得できません')}
     // Netlify fallback only when no validated static master exists. Do not replace
     // an already verified offline 9-island snapshot with an older live result.
     const today=nowJST();
@@ -861,6 +894,9 @@
     if(action==='tab')switchTab(b.dataset.tab);
     if(action==='pokemon'){state.selected=b.dataset.key;details();dialogOpen('#details');activateDetailSprite()}
     if(action==='quick-rate')quickRate(b)
+    if(action==='candy-detail'){state.selectedCandy=b.dataset.familyId;candyDetails();dialogOpen('#candy-details')}
+    if(action==='close-candy')dialogClose('#candy-details');
+    if(action==='candy-rate')setCandyChoice(state.selectedCandy,b.dataset.tier);
     if(action==='settings'){settings();dialogOpen('#settings-dialog')}
     if(action==='close-details')dialogClose('#details');
     if(action==='close-settings')dialogClose('#settings-dialog');
@@ -870,6 +906,8 @@
     if(action==='search-grade-toggle'&&SEARCH_GRADE_IDS.includes(b.dataset.grade)){const chosen=new Set(state.prefs.searchGrades);if(chosen.has(b.dataset.grade))chosen.delete(b.dataset.grade);else chosen.add(b.dataset.grade);state.prefs.searchGrades=SEARCH_GRADE_IDS.filter(g=>chosen.has(g));save();render()}
     if(action==='search-grade-preset'){if(b.dataset.preset==='all')state.prefs.searchGrades=[...SEARCH_GRADE_IDS];else if(b.dataset.preset==='none')state.prefs.searchGrades=[];else return;save();render()}
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
+    if(action==='candy-tier-filter'){state.prefs.candyTier=b.dataset.value;save();render()}
+    if(action==='candy-special-filter'){state.prefs.candySpecial=b.dataset.value;save();render()}
     if(action==='upload-icon')$('#icon-input').click();
     if(action==='reset-icon'&&state.selected)await setIcon(state.selected,null);
     if(action==='reset-islands'&&state.selected){
@@ -940,8 +978,8 @@
   },true);
   $('#icon-input').addEventListener('change',async ev=>{await handleIconInput(ev.target.files?.[0]);ev.target.value=''});
   $('#restore-input').addEventListener('change',async ev=>{await restore(ev.target.files?.[0]);ev.target.value=''});
-  ['#details','#settings-dialog'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target===$(id))dialogClose(id)}));
-  window.addEventListener('storage',ev=>{if(ev.key===KEYS.ratings)state.ratings=fromLocal(KEYS.ratings,{});if(ev.key===KEYS.overrides)state.overrides=fromLocal(KEYS.overrides,{});render()});
+  ['#details','#settings-dialog','#candy-details'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target===$(id))dialogClose(id)}));
+  window.addEventListener('storage',ev=>{if(ev.key===KEYS.ratings)state.ratings=fromLocal(KEYS.ratings,{});if(ev.key===KEYS.overrides)state.overrides=fromLocal(KEYS.overrides,{});if(ev.key===KEYS.candy)state.candyRatings=fromLocal(KEYS.candy,{});render()});
   // A full browser reload necessarily creates new DOM. Prime above-the-fold
   // cached sprites before initial render to avoid visible placeholder flashes.
   // This only reads local CacheStorage, never introduces extra network loads.
