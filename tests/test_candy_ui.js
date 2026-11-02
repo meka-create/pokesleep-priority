@@ -178,8 +178,8 @@ assert.equal(presses,6);
 state.prefs.candySpecial='all';
 state.prefs.candyKind='mega';
 render({});
-assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,108,
- '特殊要素「すべて」 includes both special and non-special candies regardless of kind');
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,109,
+ '特殊要素「すべて」 includes both special and non-special candies, including the test-only unknown species');
 state.prefs.candySpecial='any';
 state.prefs.candyKind='all';
 render({});
