@@ -49,6 +49,10 @@ jobs:
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[verify-master]')
         run: python tools/update_master.py
 
+      - name: Refresh verified candy family and special-form master
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[verify-master]')
+        run: python tools/update_candy.py
+
       - name: Validate refreshed master before publishing
         run: |
           python -m unittest discover -s tests -v
@@ -87,7 +91,7 @@ jobs:
           cp index.html app.js styles.css manifest.webmanifest sw.js .pages-public/
           : > .pages-public/.nojekyll
           cp assets/*.png assets/*.jpg .pages-public/assets/
-          cp data/master.json data/seed-data.js .pages-public/data/
+          cp data/master.json data/seed-data.js data/candy-master.json data/candy-seed.js .pages-public/data/
 
       - name: Configure Pages
         uses: actions/configure-pages@v6
