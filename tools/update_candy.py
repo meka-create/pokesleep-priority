@@ -29,6 +29,10 @@ KINDS=(*LEGACY_KINDS,'legendary','evolution')
 # Regional-form-exclusive evolutions (Perrserker, Sirfetch'd, Mr. Rime,
 # Sneasler) must never be auto-classified here.
 STANDARD_EVOLUTION_TARGETS={979:57}  # Primeape -> Annihilape
+# Guard already-confirmed legendary/mythical classifications against accidental
+# source regression. New legendary species can be added independently.
+VERIFIED_LEGENDS={150,243,244,245,380,381,488}
+VERIFIED_MYTHICAL={151,491}
 
 def fetch_csv(filename):
     req=urllib.request.Request(SOURCE+filename,headers={
@@ -62,6 +66,12 @@ def build(master, species, forms, date=None):
         if (species_by_id[id].get('is_legendary') not in ('0','1')
                 or species_by_id[id].get('is_mythical') not in ('0','1')):
             raise ValueError('Missing legendary/mythical classification for '+str(id))
+    for id in VERIFIED_LEGENDS|VERIFIED_MYTHICAL:
+        if id in ids:
+            row=species_by_id.get(id)
+            expected='is_legendary' if id in VERIFIED_LEGENDS else 'is_mythical'
+            if not row or row.get(expected)!='1':
+                raise ValueError('Verified legendary/mythical identity lost: '+str(id))
     for evolution_id,parent in STANDARD_EVOLUTION_TARGETS.items():
         child=species_by_id.get(evolution_id)
         origin=species_by_id.get(parent)
