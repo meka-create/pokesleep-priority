@@ -189,17 +189,24 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .candy-toolbar .search-input{margin-bottom:10px}
 .candy-filter-label{font-size:11px;font-weight:750;color:#a8bacd;margin:12px 2px 7px}
 .candy-toolbar .chip{padding:7px 10px;min-height:34px}
-.candy-tier-filters{display:grid;grid-template-columns:1.4fr repeat(4,minmax(0,1fr)) 1.4fr;gap:5px}
-.candy-tier-filter{min-width:0;padding:7px 0!important;text-align:center;font-size:15px!important}
-.candy-tier-filter:first-child,.candy-tier-filter:last-child{font-size:11px!important}
-.candy-tier-legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:10px;color:#b9c9da;line-height:1.4;margin:8px 3px 4px}
-.candy-tier-legend span{white-space:nowrap}
-.candy-tier-legend strong{font-size:12px;color:#e6eef6}
+.candy-tier-filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.candy-tier-choice{min-width:0;min-height:55px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:1px solid #3b4e60;border-radius:10px;background:#182838;color:#a6bacc;padding:3px 1px;touch-action:manipulation;transition:background .12s,border-color .12s}
+.candy-tier-symbol{font-size:22px;font-weight:900;line-height:1.1}
+.candy-tier-name{font-size:10px;font-weight:750;white-space:nowrap;line-height:1.2}
+.candy-tier-choice[data-value="all"] .candy-tier-symbol,.candy-tier-choice[data-value="none"] .candy-tier-symbol{font-size:11px;font-weight:800}
+.candy-tier-choice.active{background:#273b50;border-color:#8399a9;color:#eef4ff}
+.candy-tier-choice[data-value="use"].active{background:#234a42;border-color:#68af91;color:#a6ecc6}
+.candy-tier-choice[data-value="candidate"].active{background:#22445a;border-color:#6eadd2;color:#b2dfff}
+.candy-tier-choice[data-value="hold"].active{background:#493e5e;border-color:#a48acb;color:#e4d3ff}
+.candy-tier-choice[data-value="save"].active{background:#503b46;border-color:#d1a1ad;color:#f4c6d0}
+.candy-tier-choice:not(.active) .candy-tier-symbol{opacity:.7}
 .candy-special-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .candy-special-mode{border:1px solid #476078;background:#1b2d40;border-radius:12px;min-height:38px;color:#c4d2df;font-size:12px;font-weight:800;touch-action:manipulation}
 .candy-special-mode.active{background:#f4c862;border-color:#f4c862;color:#182535}
 .candy-kind-filter{padding-top:1px}
 .candy-kind-filter .candy-filter-label{margin-top:10px}
+.candy-kind-filter .chips{flex-wrap:wrap;overflow:visible;gap:7px}
+.candy-kind-filter .chip{border-radius:50px}
 .candy-list{display:flex;flex-direction:column;gap:9px}
 .candy-item{
   display:flex;flex-direction:column;gap:7px;min-width:0;
@@ -211,7 +218,7 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .candy-item[data-grade="hold"]{border-color:#5f7795}
 .candy-item[data-grade="save"]{border-color:#856e9b}
 .candy-profile{display:flex;align-items:center;gap:10px;width:100%;min-width:0;min-height:51px;padding:0 3px;text-align:left;background:transparent;border:0;border-radius:10px;color:inherit}
-.candy-profile:focus-visible,.candy-quick-grade:focus-visible,.candy-special-mode:focus-visible,.candy-tier-filter:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.candy-profile:focus-visible,.candy-quick-grade:focus-visible,.candy-special-mode:focus-visible,.candy-tier-choice:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .candy-profile .pokemon-icon{width:52px;height:52px;margin:0;flex:none}
 .candy-profile .pokemon-icon .fallback{width:44px;height:44px;font-size:19px}
 .candy-item-info{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;justify-content:center}
@@ -238,8 +245,11 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
   .candy-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
 }
 @media(max-width:359px){
-  .candy-tier-filters{gap:3px}
-  .candy-tier-filter{font-size:14px!important}
+  .candy-tier-filters{gap:4px}
+  .candy-tier-choice{min-height:51px}
+  .candy-tier-symbol{font-size:20px}
+  .candy-tier-name{font-size:9px}
+  .candy-tier-choice[data-value="all"] .candy-tier-symbol,.candy-tier-choice[data-value="none"] .candy-tier-symbol{font-size:10px}
   .candy-quick-grades{gap:5px}
   .candy-quick-grade{min-height:40px}
 }

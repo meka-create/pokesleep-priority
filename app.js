@@ -8,7 +8,7 @@
   const GRADE_IDS=new Set(LEVELS.map(x=>x.id));
   const CANDY_LEVELS=[{id:'use',symbol:'◎',label:'優先投入'},{id:'candidate',symbol:'○',label:'投入候補'},{id:'hold',symbol:'△',label:'保留'},{id:'save',symbol:'×',label:'温存'}];
   const CANDY_IDS=new Set(CANDY_LEVELS.map(x=>x.id));
-  const CANDY_KINDS={regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス'};
+  const CANDY_KINDS={regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',legendary:'伝説・幻',evolution:'追加進化待ち'};
   const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
@@ -85,7 +85,7 @@
   })():base;
   const master={...combinedMaster,pokemon:canonicalizePokemon(combinedMaster.pokemon)};
   function validCandyMaster(value){
-    if(!value||value.schema!==1||!Array.isArray(value.families)||value.families.length<70)return false;
+    if(!value||value.schema!==2||!Array.isArray(value.families)||value.families.length<70)return false;
     const keys=new Set(),members=new Set();
     for(const f of value.families){
       if(!Number.isInteger(f.id)||f.id<1||keys.has(f.id)||!Number.isInteger(f.labelId)
@@ -368,13 +368,13 @@
     // relation or claiming that it has no special forms.
     for(const [id,p] of byId)if(!covered.has(id))
       groups.push({id,key:'pending:'+id,label:p.name+'のアメ（仮）',representative:p,
-        memberNames:[p.name],special:{regional:[],mega:[],gmax:[]},unknown:true});
+        memberNames:[p.name],special:{regional:[],mega:[],gmax:[],legendary:[],evolution:[]},unknown:true});
     return groups;
   }
   function candyBadge(f){
-    if(f.unknown)return '特殊形態：未確認';
+    if(f.unknown)return '特殊要素：未確認';
     const kinds=Object.entries(CANDY_KINDS).filter(([key])=>f.special[key]?.length).map(([,label])=>label);
-    return kinds.length?kinds.join(' / '):'特殊形態なし';
+    return kinds.length?kinds.join(' / '):'特殊要素なし';
   }
   function candyShell(){
     const tierOptions=[{id:'all',symbol:'すべて',label:'すべて'},
@@ -385,16 +385,17 @@
       +'<input class="search-input" id="search" type="search" placeholder="検索" value="'+htmlEscape(state.prefs.search)+'" autocomplete="off">'
       +'<div class="candy-filter-label">投入優先度</div>'
       +'<div class="candy-tier-filters" role="group" aria-label="投入優先度で絞り込み">'
-      +tierOptions.map(t=>'<button type="button" class="chip candy-tier-filter'+(state.prefs.candyTier===t.id?' active':'')+'"'
+      +tierOptions.map(t=>'<button type="button" class="candy-tier-choice'+(state.prefs.candyTier===t.id?' active':'')+'"'
         +' data-action="candy-tier-filter" data-value="'+t.id+'" title="'+htmlEscape(t.label)+'"'
-        +' aria-label="'+htmlEscape(t.symbol+' '+t.label)+'" aria-pressed="'+(state.prefs.candyTier===t.id)+'">'+htmlEscape(t.symbol)+'</button>').join('')+'</div>'
-      +'<div class="candy-tier-legend" aria-label="投入優先度の記号">'
-      +CANDY_LEVELS.map(t=>'<span><strong>'+t.symbol+'</strong> '+t.label+'</span>').join('')+'</div>'
-      +'<div class="candy-filter-label">特殊形態</div>'
-      +'<div class="candy-special-modes" role="group" aria-label="特殊形態の有無">'
+        +' aria-label="'+htmlEscape(t.symbol+' '+t.label)+'" aria-pressed="'+(state.prefs.candyTier===t.id)+'">'
+        +'<span class="candy-tier-symbol">'+htmlEscape(t.symbol)+'</span>'
+        +(t.id==='all'||t.id==='none'?'':'<span class="candy-tier-name">'+htmlEscape(t.label)+'</span>')
+        +'</button>').join('')+'</div>'
+      +'<div class="candy-filter-label">特殊要素</div>'
+      +'<div class="candy-special-modes" role="group" aria-label="特殊要素の有無">'
       +modes.map(m=>'<button type="button" class="candy-special-mode'+(selected===m.id?' active':'')+'"'
         +' data-action="candy-special-filter" data-value="'+m.id+'" aria-pressed="'+(selected===m.id)+'">'+m.label+'</button>').join('')+'</div>'
-      +(selected==='any'?'<div class="candy-kind-filter"><div class="candy-filter-label">特殊形態の種類</div>'
+      +(selected==='any'?'<div class="candy-kind-filter"><div class="candy-filter-label">種類</div>'
         +chips([{id:'all',text:'全種類'},...Object.entries(CANDY_KINDS).map(([id,text])=>({id,text}))],
           state.prefs.candyKind,'candy-kind-filter')+'</div>':'')
       +'</section><div id="results"></div>';
@@ -670,7 +671,7 @@
   function details(){const p=selected();if(!p)return;const g=grade(p.key),islands=islandList(p),custom=Object.hasOwn(state.overrides,p.key);$('#details-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><div class="subtle">No. ${String(p.id).padStart(4,'0')}　${htmlEscape(p.sleep)}</div><button class="close-button" data-action="close-details" aria-label="閉じる">×</button></div><div class="sheet-pokemon">${iconMarkup(p)}<div><h2>${htmlEscape(p.name)}</h2><p>${islands.length?islands.map(x=>AREAS[x]).join(' / '):'出現島の情報は未設定'}</p></div></div><p class="field-label">厳選優先度を選択</p><div class="grade-options">${LEVELS.map(x=>`<button class="grade-choice ${g===x.id?'active':''}" data-action="rate" data-grade="${x.id}" aria-pressed="${g===x.id}"><span>${x.symbol}</span><span>${x.label}</span></button>`).join('')}</div><div class="sheet-actions"><button class="secondary-button" data-action="unrate">未評価に戻す</button><button class="secondary-button" data-action="upload-icon">アイコン変更</button>${state.icons.has(p.key)?'<button class="secondary-button" data-action="reset-icon">画像解除</button>':''}</div><details><summary>出現する島を手動で修正 ${custom?'（手動設定中）':''}</summary><div class="island-options">${AREAS.map((a,i)=>`<label class="island-option"><input type="checkbox" data-action="island-toggle" data-island="${i}" ${islands.includes(i)?'checked':''}> ${htmlEscape(a)}</label>`).join('')}</div><button class="secondary-button" data-action="reset-islands">マスターの島データに戻す</button><p class="small-note">手動で変更した島の設定は、マスターが更新されても維持されます。</p></details><p class="small-note">優先度やアップロード画像はこの端末に保存されます。端末移行には設定からバックアップしてください。</p>`;
     if($('#details').open)activateDetailSprite();
   }
-  function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・ウッウロボの投入優先度・島設定・登録画像をJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。ウッウロボの特殊形態は原作シリーズの参考情報であり、ポケモンスリープへの実装を示すものではありません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
+  function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・ウッウロボの投入優先度・島設定・登録画像をJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。ウッウロボの特殊要素には原作の形態、伝説・幻、通常形態の追加進化待ちを含み、ポケモンスリープでの実装済みを意味するものではありません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
   function updateGrade(k,g){
     const previous=grade(k);
     if(g==='none')delete state.ratings[k];else state.ratings[k]=g;

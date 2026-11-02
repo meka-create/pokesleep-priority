@@ -6,7 +6,7 @@ const app=read('app.js'),html=read('index.html'),style=read('styles.css'),sw=rea
 const pokemon=JSON.parse(read('data/master.json')).pokemon;
 const candy=JSON.parse(read('data/candy-master.json'));
 const seed=read('data/candy-seed.js');
-assert.equal(candy.schema,1);
+assert.equal(candy.schema,2);
 assert.ok(candy.families.length>=108,'candy families must include current full Sleep master, not old ZIP');
 assert.equal(new Set(candy.families.map(f=>f.id)).size,candy.families.length);
 assert.deepEqual(JSON.parse(seed.slice('window.__CANDY_MASTER__='.length).trim().replace(/;$/,'')),candy);
@@ -29,6 +29,14 @@ assert.ok(pika.special.regional.includes(26));
 assert.equal(familyMap.get(439).labelId,122,'Mime Jr uses Mr Mime Candy');
 assert.equal(familyMap.get(980).id,familyMap.get(194).id,'Clodsire shares Wooper lineage');
 assert.equal(familyMap.get(700).id,familyMap.get(133).id,'all Eeveelutions share Eevee candy');
+const legendFamilies=candy.families.filter(f=>f.special.legendary.length);
+const pendingFamilies=candy.families.filter(f=>f.special.evolution.length);
+assert.deepEqual(legendFamilies.map(f=>f.id).sort((a,b)=>a-b),[150,151,243,244,245,380,381,488,491]);
+assert.deepEqual(pendingFamilies.map(f=>f.id),[56], 'Only ordinary Mankey -> Primeape -> Annihilape is pending');
+assert.deepEqual(pendingFamilies[0].special.evolution,[979]);
+for(const id of [52,83,122,215])assert.deepEqual(familyMap.get(id).special.evolution,[],
+ 'regional-only evolution must not be marked as pending: '+id);
+
 assert.ok(html.includes('data-tab="candy"'));
 assert.ok(html.includes('id="candy-details"'));
 assert.ok(html.includes('src="./data/candy-seed.js"'));
@@ -43,4 +51,4 @@ assert.ok(sw.includes("'./data/candy-master.json'"));
 assert.ok(sw.includes("'./data/candy-seed.js'"));
 assert.ok(read('.github/workflows/pages.yml').includes('python tools/update_candy.py'));
 assert.ok(read('.github/workflows/pages.yml').includes('data/candy-master.json data/candy-seed.js'));
-console.log('PASS: candy families, current Sleep species, true special forms, third tab, safe backups, daily updates');
+console.log('PASS: 108 candy families, 9 legendary/mythical, Mankey-only ordinary pending evolution, safe backups and daily updates');
