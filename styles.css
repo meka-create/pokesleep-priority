@@ -217,15 +217,14 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .candy-item[data-grade="candidate"]{border-color:#4c8876}
 .candy-item[data-grade="hold"]{border-color:#5f7795}
 .candy-item[data-grade="save"]{border-color:#856e9b}
-/* One stable top row: species name, candy type and chevron; subtext wraps below. */
-.candy-profile{display:grid;grid-template-columns:52px minmax(0,1fr) max-content 12px;align-items:start;column-gap:8px;width:100%;min-width:0;min-height:52px;padding:0 3px;text-align:left;background:transparent;border:0;border-radius:10px;color:inherit}
+.candy-profile{display:flex;align-items:center;gap:10px;width:100%;min-width:0;min-height:51px;padding:0 3px;text-align:left;background:transparent;border:0;border-radius:10px;color:inherit}
 .candy-profile:focus-visible,.candy-quick-grade:focus-visible,.candy-special-mode:focus-visible,.candy-tier-choice:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.candy-profile .pokemon-icon{grid-column:1;grid-row:1;align-self:center;width:52px;height:52px;margin:0;flex:none}
+.candy-profile .pokemon-icon{width:52px;height:52px;margin:0;flex:none}
 .candy-profile .pokemon-icon .fallback{width:44px;height:44px;font-size:19px}
-.candy-item-info{grid-column:2;grid-row:1;display:flex;min-width:0;flex-direction:column;align-self:start;gap:4px;justify-content:flex-start;padding-top:3px}
+.candy-item-info{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;justify-content:center}
 .candy-name{font-size:13px;line-height:1.35;overflow-wrap:anywhere}
 .candy-item-info small{font-size:10px;line-height:1.4;color:#a9bfd3;overflow-wrap:anywhere}
-.candy-type-tag{grid-column:3;grid-row:1;align-self:start;--candy-accent:#b7c8d8;display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;border:1px solid var(--candy-accent);background:color-mix(in srgb,var(--candy-accent) 13%,#182838);border-radius:8px;min-height:24px;min-width:0;padding:3px 7px;color:var(--candy-accent);font-size:10px;font-weight:850;line-height:1.2;letter-spacing:.01em}
+.candy-type-tag{--candy-accent:#b7c8d8;display:inline-flex;align-items:center;justify-content:center;flex:none;white-space:nowrap;border:1px solid var(--candy-accent);background:color-mix(in srgb,var(--candy-accent) 13%,#182838);border-radius:8px;min-height:24px;min-width:0;padding:3px 7px;color:var(--candy-accent);font-size:10px;font-weight:850;line-height:1.2;letter-spacing:.01em}
 .candy-type-tag[data-type="normal"]{--candy-accent:#d0d7df}
 .candy-type-tag[data-type="fire"]{--candy-accent:#ffad6b}
 .candy-type-tag[data-type="water"]{--candy-accent:#86bbef}
@@ -244,8 +243,8 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .candy-type-tag[data-type="dark"]{--candy-accent:#c3b1c9}
 .candy-type-tag[data-type="steel"]{--candy-accent:#b0d8e1}
 .candy-type-tag[data-type="fairy"]{--candy-accent:#f5b4e6}
-@media(max-width:359px){.candy-profile{column-gap:6px}.candy-type-tag{padding:3px 5px;font-size:9px}}
-.candy-chevron{grid-column:4;grid-row:1;align-self:start;color:#7890a9;font-size:23px;flex:none;line-height:1}
+@media(max-width:359px){.candy-type-tag{padding:3px 5px;font-size:9px}}
+.candy-chevron{color:#7890a9;font-size:23px;flex:none;line-height:1}
 .candy-quick-grades{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
 .candy-quick-grade{min-width:0;min-height:43px;border:1px solid #3b5268;border-radius:10px;background:#1a2b3e;color:#aebfce;font-size:22px;font-weight:850;line-height:1;touch-action:manipulation}
 .candy-quick-grade:active{transform:scale(.96);background:#354960}
