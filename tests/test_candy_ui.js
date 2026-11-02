@@ -13,7 +13,7 @@ const levels=[{id:'use',symbol:'◎',label:'優先投入'},{id:'candidate',symbo
   {id:'hold',symbol:'△',label:'保留'},{id:'save',symbol:'×',label:'温存'}];
 const context=vm.createContext({
  state,KEYS:{candy:'candy'},CANDY_IDS:new Set(levels.map(x=>x.id)),CANDY_LEVELS:levels,
- CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス'},
+ CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス',legendary:'伝説・幻',evolution:'追加進化待ち'},
  getPokemon:()=>state.master.pokemon,
  normalize:s=>String(s||'').normalize('NFKC').toLowerCase(),
  iconMarkup:p=>'<div class="pokemon-icon"><img alt="" src="/'+p.id+'.png"></div>',
