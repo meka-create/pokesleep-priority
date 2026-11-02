@@ -161,7 +161,7 @@ def validate(result,master,require_coverage=True):
             if id in mapping:raise ValueError('Duplicate candy family membership: '+str(id))
             mapping[id]=family['id']
         kinds=family.get('special')
-        expected=set(KINDS if result['schema']==2 else LEGACY_KINDS)
+        expected=set(KINDS if result['schema']>=2 else LEGACY_KINDS)
         if not isinstance(kinds,dict) or set(kinds)!=expected:raise ValueError('Invalid special form fields')
         if any(not isinstance(kinds[k],list) or kinds[k]!=sorted(set(kinds[k]))
                or any(not isinstance(i,int) or i<1 for i in kinds[k]) for k in expected):
