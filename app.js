@@ -467,7 +467,7 @@
       +'<span class="candy-type-current"><span class="candy-type-dot" aria-hidden="true"></span>'
       +'<span>'+currentTypeLabel+'</span></span>'
       +'<span class="candy-type-arrow" aria-hidden="true">▾</span></button></div>'
-      +'<div class="candy-filter-label">特殊要素</div>
+      +'<div class="candy-filter-label">特殊要素</div>'
       +'<div class="candy-special-modes" role="group" aria-label="特殊要素の有無">'
       +modes.map(m=>'<button type="button" class="candy-special-mode'+(selected===m.id?' active':'')+'"'
         +' data-action="candy-special-filter" data-value="'+m.id+'" aria-pressed="'+(selected===m.id)+'">'+m.label+'</button>').join('')+'</div>'
