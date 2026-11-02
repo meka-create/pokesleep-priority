@@ -80,4 +80,24 @@ state.master.pokemon.push({key:'1100:default',id:1100,name:'未登録ポケモ�
 const pending=vm.runInContext('candyFamilies()',context).find(f=>f.key==='pending:1100');
 assert.ok(pending?.unknown);
 assert.equal(vm.runInContext('candyBadge',context)(pending),'特殊形態：未確認');
+const prefsStart=app.indexOf('  const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};');
+const prefsEnd=app.indexOf('  const state={master,',prefsStart);
+assert.ok(prefsStart>0&&prefsEnd>prefsStart);
+function migrated(saved){
+ const isolated=vm.createContext({
+   DEFAULT_PREFS:{tab:'candy',area:0,onlyRated:true,searchGrades:null,
+     candySpecial:'all',candyKind:'all',candyTier:'all'},
+   KEYS:{prefs:'prefs'},fromLocal:()=>saved,CANDY_LEVELS:levels,
+   CANDY_KINDS:{regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス'},
+   SEARCH_GRADE_IDS:['star','double','circle','triangle','cross','none'],Set,Object,Array,Number
+ });
+ vm.runInContext(app.slice(prefsStart,prefsEnd),isolated);
+ return vm.runInContext('prefs',isolated);
+}
+assert.equal(migrated({candySpecial:'mega'}).candySpecial,'any');
+assert.equal(migrated({candySpecial:'mega'}).candyKind,'mega');
+assert.equal(migrated({candySpecial:'regional'}).candyKind,'regional');
+assert.equal(migrated({candySpecial:'none'}).candySpecial,'none');
+assert.equal(migrated({candySpecial:'any',candyKind:'gmax'}).candyKind,'gmax');
+assert.equal(migrated({candySpecial:'invalid'}).candySpecial,'all');
 console.log('PASS: 108 inline candy priorities, same-symbol toggle, symbolic legend, staged special filters, search, modal, unknown species');
