@@ -140,8 +140,6 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .island-panel[data-area-panel="0"]{--field-art:url('./assets/field-greengrass.png')}
 .island-panel[data-area-panel="7"]{--field-art:url('./assets/field-greengrass-ex.jpg')}
 .island-panel[data-area-panel="1"]{--field-art:url('./assets/field-cyan.png')}
-/* Ordinary Cyan Beach: favor the shoreline and sea; EX keeps its own crop. */
-
 .island-panel[data-area-panel="8"]{--field-art:url('./assets/field-cyan-ex.jpg')}
 .island-panel[data-area-panel="2"]{--field-art:url('./assets/field-taupe.png')}
 .island-panel[data-area-panel="3"]{--field-art:url('./assets/field-snowdrop.png')}
@@ -183,3 +181,40 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
   box-shadow:0 -8px 30px #0008;
 }
 .center-dialog::backdrop{background:#010913b8;backdrop-filter:blur(4px)}
+
+/* Cram-o-matic: one compact row per candy family. No copied ZIP layout. */
+.bottom-nav{gap:5px;padding-left:7px;padding-right:7px}
+.nav-button{font-size:11px;min-width:0}
+.nav-button>span:first-child{font-size:24px}
+.candy-toolbar .search-input{margin-bottom:10px}
+.candy-filter-label{font-size:11px;font-weight:750;color:#9fb2c7;margin:11px 2px 6px}
+.candy-toolbar .chips{gap:6px}
+.candy-toolbar .chip{padding:7px 10px;min-height:33px}
+.candy-list{display:flex;flex-direction:column;gap:7px}
+.candy-item{
+  display:flex;align-items:center;gap:11px;width:100%;min-height:68px;
+  background:linear-gradient(140deg,#203449,#1c2b3e);border:1px solid #344b63;
+  border-radius:15px;color:var(--ink);padding:7px 11px 7px 7px;text-align:left;
+}
+.candy-item:active{background:#2b4055}
+.candy-item:focus-visible,.candy-level-choice:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.candy-item .pokemon-icon{width:50px;height:50px;margin:0;flex:none}
+.candy-item .pokemon-icon .fallback{width:43px;height:43px;font-size:19px}
+.candy-item-info{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px}
+.candy-name{font-size:13px;line-height:1.3;overflow-wrap:anywhere}
+.candy-item-info small{font-size:10px;line-height:1.4;color:#a9bfd3;overflow-wrap:anywhere}
+.candy-status{font-size:10px;font-weight:800;flex:none;border-radius:30px;padding:6px 9px;border:1px solid #506176;color:#b8c8d7;background:#293a4a}
+.candy-status[data-candy-tier="use"]{border-color:#d8ab5b;color:#ffe0a0;background:#554529}
+.candy-status[data-candy-tier="candidate"]{border-color:#69ac9e;color:#b6efdb;background:#255046}
+.candy-status[data-candy-tier="hold"]{border-color:#739dc2;color:#c4dffc;background:#29455d}
+.candy-status[data-candy-tier="save"]{border-color:#ad9bcf;color:#e2d4ff;background:#47395e}
+.candy-modal-title h2{font-size:20px;margin:6px 0 7px}
+.candy-modal-title small{font-size:12px;line-height:1.5;color:#c2d1df}
+.candy-family-members{font-size:12px;color:#a7bcd1;line-height:1.6;margin:12px 0;padding:10px 12px;border-radius:10px;background:#142739}
+.candy-level-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.candy-level-choice{min-height:48px;background:#24384b;border:1px solid #52677d;border-radius:12px;font-size:13px;font-weight:750;color:var(--ink)}
+.candy-level-choice[aria-pressed="true"]{background:#5b4d2a;border-color:#f4c862;color:#ffdda1}
+.candy-unset{width:100%;margin-top:12px}
+@media(min-width:700px){
+  .candy-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+}
