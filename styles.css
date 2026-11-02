@@ -205,6 +205,8 @@ button:focus-visible,input:focus-visible,summary:focus-visible {outline:2px soli
 .candy-special-mode.active{background:#f4c862;border-color:#f4c862;color:#182535}
 .candy-kind-filter{padding-top:1px}
 .candy-kind-filter .candy-filter-label{margin-top:10px}
+.candy-kind-filter .chips{flex-wrap:wrap;overflow:visible;gap:7px}
+.candy-kind-filter .chip{border-radius:50px}
 .candy-list{display:flex;flex-direction:column;gap:9px}
 .candy-item{
   display:flex;flex-direction:column;gap:7px;min-width:0;
