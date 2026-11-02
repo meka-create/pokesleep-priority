@@ -1,15 +1,18 @@
 'use strict';
 /* No third-party JS, no analytics, no external account. All personal ratings stay in this browser. */
 (() => {
-  const KEYS={ratings:'gense-note-ratings-v1',overrides:'gense-note-islands-v1',prefs:'gense-note-prefs-v1',master:'gense-note-master-v1'};
+  const KEYS={ratings:'gense-note-ratings-v1',overrides:'gense-note-islands-v1',prefs:'gense-note-prefs-v1',master:'gense-note-master-v1',candy:'gense-note-candy-priorities-v1',candyMaster:'gense-note-candy-master-v1'};
   const AREAS=['ワカクサ本島','シアンの砂浜','トープ洞窟','ウノハナ雪原','ラピスラズリ湖畔','ゴールド旧発電所','アンバー渓谷','ワカクサ本島 EX','シアンの砂浜 EX'];
   // Field header imagery is hosted in the app itself, not fetched on each visit.
   const LEVELS=[{id:'star',symbol:'☆',label:'最優先'},{id:'double',symbol:'◎',label:'高優先'},{id:'circle',symbol:'○',label:'優先'},{id:'triangle',symbol:'△',label:'低優先'},{id:'cross',symbol:'×',label:'不要'}];
   const GRADE_IDS=new Set(LEVELS.map(x=>x.id));
+  const CANDY_LEVELS=[{id:'use',label:'優先投入'},{id:'candidate',label:'投入候補'},{id:'hold',label:'保留'},{id:'save',label:'温存'}];
+  const CANDY_IDS=new Set(CANDY_LEVELS.map(x=>x.id));
+  const CANDY_KINDS={regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス'};
   const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
-  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null};
+  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all'};
   // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
   const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
   const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
@@ -31,6 +34,7 @@
     return result;
   }
   const masterSeed=window.__SEED_MASTER__;
+  const candySeed=window.__CANDY_MASTER__;
   const $=(s,root=document)=>root.querySelector(s);
   const htmlEscape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   // Match only from the beginning of a name; hiragana and katakana are equivalent.
@@ -80,15 +84,44 @@
     };
   })():base;
   const master={...combinedMaster,pokemon:canonicalizePokemon(combinedMaster.pokemon)};
+  function validCandyMaster(value){
+    if(!value||value.schema!==1||!Array.isArray(value.families)||value.families.length<70)return false;
+    const keys=new Set(),members=new Set();
+    for(const f of value.families){
+      if(!Number.isInteger(f.id)||f.id<1||keys.has(f.id)||!Number.isInteger(f.labelId)
+        ||!Array.isArray(f.members)||!f.members.includes(f.labelId)
+        ||!f.special||typeof f.special!=='object')return false;
+      keys.add(f.id);
+      for(const id of f.members){
+        if(!Number.isInteger(id)||id<1||members.has(id))return false;
+        members.add(id);
+      }
+      if(Object.keys(CANDY_KINDS).some(k=>!Array.isArray(f.special[k])
+        ||f.special[k].some(id=>!Number.isInteger(id)||id<1)))return false;
+    }
+    return members.size>=200;
+  }
+  const cachedCandy=fromLocal(KEYS.candyMaster,null);
+  const candyMaster=validCandyMaster(cachedCandy)
+    &&(!validCandyMaster(candySeed)||Date.parse(cachedCandy.updatedAt)>Date.parse(candySeed.updatedAt))
+    ?cachedCandy:candySeed;
+  const candyPrefs=fromLocal(KEYS.candy,{});
+  const candyRatings={};
+  if(candyPrefs&&typeof candyPrefs==='object'&&!Array.isArray(candyPrefs))
+    for(const [id,value] of Object.entries(candyPrefs))
+      if(/^(?:[1-9]\\d*|pending:[1-9]\\d*)$/.test(id)&&CANDY_IDS.has(value))
+        candyRatings[id]=value;
   const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};
-  if(!['dex','search'].includes(prefs.tab))prefs.tab='dex';
+  if(!['dex','search','candy'].includes(prefs.tab))prefs.tab='dex';
+  if(!['all',...CANDY_LEVELS.map(x=>x.id),'none'].includes(prefs.candyTier))prefs.candyTier='all';
+  if(!['all',...Object.keys(CANDY_KINDS),'any','none'].includes(prefs.candySpecial))prefs.candySpecial='all';
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
   // Migrate v0.1.2's onlyRated preference without changing any stored ratings.
   // An explicitly saved empty array means 'show no grades', not 'reset filter'.
   prefs.searchGrades=Array.isArray(prefs.searchGrades)
     ? [...new Set(prefs.searchGrades.filter(g=>SEARCH_GRADE_IDS.includes(g)))]
     : SEARCH_GRADE_IDS.filter(g=>g!=='none'||prefs.onlyRated===false);
-  const state={master,ratings:fromLocal(KEYS.ratings,{}),overrides:fromLocal(KEYS.overrides,{}),prefs,icons:new Map(),selected:null,status:'',imageBusy:false};
+  const state={master,candyMaster,candyRatings,ratings:fromLocal(KEYS.ratings,{}),overrides:fromLocal(KEYS.overrides,{}),prefs,icons:new Map(),selected:null,selectedCandy:null,status:'',imageBusy:false};
   let dbPromise=null,toastTimer=null,loadingMaster=false;
   const nowJST=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=k=>parts.find(x=>x.type===k)?.value;return `${get('year')}-${get('month')}-${get('day')}`;};
   function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600)}
