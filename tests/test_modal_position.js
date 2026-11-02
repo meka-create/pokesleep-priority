@@ -30,5 +30,5 @@ assert.doesNotMatch(css,/#details\.bottom-sheet\s*\{/,'legacy bottom-sheet selec
 assert.ok(html.includes('<dialog class="center-dialog" id="details">'));
 assert.ok(html.includes('<dialog class="bottom-sheet" id="settings-dialog">'));
 assert.match(app,/if\(action==='pokemon'\)\{state\.selected=b\.dataset\.key;details\(\);dialogOpen\('#details'\);activateDetailSprite\(\)\}/);
-assert.match(sw,/gense-note-shell-v0\.2\.4/);
+assert.match(sw,/gense-note-shell-v0\.2\.5/);
 console.log('PASS: detail modal structurally separate, anchored at 50dvh and 50%, settings remains bottom, existing image handling unchanged');
