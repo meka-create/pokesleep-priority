@@ -25,6 +25,11 @@ SOURCE='https://raw.githubusercontent.com/PokeAPI/pokeapi/master/data/v2/csv/'
 CANDY_NAMES={172:25,173:35,174:39,440:113,439:122,360:202,438:185}
 LEGACY_KINDS=('regional','mega','gmax')
 KINDS=(*LEGACY_KINDS,'legendary','evolution')
+# Exactly one Cram-o-matic type per candy item (NOT all evolution types).
+CANDY_TYPES=frozenset(('normal','fire','water','electric','grass','ice',
+    'fighting','poison','ground','flying','psychic','bug','rock','ghost',
+    'dragon','dark','steel','fairy'))
+SLEEP_POKEMON_SOURCE='https://raw.githubusercontent.com/nitoyon/pokesleep-tool/main/src/data/pokemon.json'
 # Only confirmed STANDARD-form evolutions belong to "追加進化待ち".
 # Regional-form-exclusive evolutions (Perrserker, Sirfetch'd, Mr. Rime,
 # Sneasler) must never be auto-classified here.
@@ -43,7 +48,17 @@ def fetch_csv(filename):
     if len(result)<1000:raise ValueError('Truncated PokeAPI CSV: '+filename)
     return result
 
-def build(master, species, forms, date=None):
+def fetch_sleep_pokemon():
+    req=urllib.request.Request(SLEEP_POKEMON_SOURCE,headers={
+        'User-Agent':'GensenNote-CandyMaster/1.0 (GitHub Actions, daily)',
+        'Accept':'application/json','Cache-Control':'no-cache'})
+    with urllib.request.urlopen(req,timeout=30) as res:
+        data=json.load(res)
+    if not isinstance(data,list) or len(data)<200:
+        raise ValueError('Incomplete Pokémon Sleep type master')
+    return data
+
+def build(master, species, forms, date=None, sleep_pokemon=None):
     if master.get('schema')!=1 or len(master.get('pokemon',[]))<200:
         raise ValueError('Invalid Sleep species master')
     pokemon=master['pokemon']
@@ -87,6 +102,13 @@ def build(master, species, forms, date=None):
         if re.search(r'-(alola|galar|hisui|paldea)$',slug):entry.add('regional')
         if re.search(r'-mega(?:-|$)',slug):entry.add('mega')
         if slug.endswith('-gmax'):entry.add('gmax')
+    if sleep_pokemon is None:
+        raise ValueError('Pokémon Sleep candy type master is required')
+    by_sleep_id={}
+    for entry in sleep_pokemon:
+        if not isinstance(entry,dict) or not isinstance(entry.get('id'),int):
+            raise ValueError('Invalid Pokémon Sleep type record')
+        by_sleep_id.setdefault(entry['id'],[]).append(entry)
     families=[]
     for chain,matched in groups.items():
         related=chains[chain]
@@ -104,23 +126,35 @@ def build(master, species, forms, date=None):
         special['evolution']=sorted(target for target,parent in
             STANDARD_EVOLUTION_TARGETS.items()
             if parent in related and target not in ids)
-        families.append({'id':root,'labelId':label_id,'members':members,'special':special})
+        # The type belongs to the named candy, not every Pokémon that
+        # consumes it. Eevee Candy is Normal even though Eeveelutions have
+        # nine distinct types. Regional variants share a single candy.
+        available=by_sleep_id.get(label_id,[])
+        typed=next((e for e in available if not e.get('form')),None)
+        if typed is None:
+            typed=next((e for e in available if e.get('form')=='Medium'),None)
+        if typed is None or typed.get('type') not in CANDY_TYPES:
+            raise ValueError('Missing verified candy item type for '+str(label_id))
+        families.append({'id':root,'labelId':label_id,'members':members,'special':special,
+                         'type':typed['type']})
     families.sort(key=lambda f:(f['labelId'],f['id']))
     today=date or dt.datetime.now(dt.timezone(dt.timedelta(hours=9))).date().isoformat()
-    result={'schema':2,'updatedAt':today,
-            'source':'PokeAPI pokemon_species.csv and pokemon.csv; current Pokémon Sleep master',
+    result={'schema':3,'updatedAt':today,
+            'source':'PokeAPI evolution/forms; pokesleep-tool Pokémon Sleep base candy species type; current Pokémon Sleep master',
             'families':families}
     validate(result,master)
     return result
 
 def validate(result,master,require_coverage=True):
-    if result.get('schema') not in (1,2) or not isinstance(result.get('families'),list):
+    if result.get('schema') not in (1,2,3) or not isinstance(result.get('families'),list):
         raise ValueError('Broken candy master schema')
     families=result['families']
     if not 70<=len(families)<=1000:raise ValueError('Implausible family count')
     mapping={}
     for family in families:
         if not isinstance(family['id'],int) or family['id']<1:raise ValueError('Invalid family ID')
+        if result['schema']==3 and family.get('type') not in CANDY_TYPES:
+            raise ValueError('Unknown or missing Pokémon Candy type')
         if family['labelId'] not in family['members']:raise ValueError('Missing label species')
         if not family['members'] or family['members']!=sorted(set(family['members'])):raise ValueError('Invalid members')
         for id in family['members']:
@@ -132,7 +166,7 @@ def validate(result,master,require_coverage=True):
         if any(not isinstance(kinds[k],list) or kinds[k]!=sorted(set(kinds[k]))
                or any(not isinstance(i,int) or i<1 for i in kinds[k]) for k in expected):
             raise ValueError('Invalid special form entries')
-    if result['schema']==2:
+    if result['schema']>=2:
         if any(f['special']['evolution'] and
                (f['id']!=56 or f['special']['evolution']!=[979]) for f in families):
             raise ValueError('Unverified or regional-only extra evolution')
@@ -155,7 +189,7 @@ def main():
     master=json.loads(MONS.read_text('utf-8'))
     if old:validate(old,master,require_coverage=False)  # New Sleep species may precede this snapshot.
     try:
-        result=build(master,fetch_csv('pokemon_species.csv'),fetch_csv('pokemon.csv'))
+        result=build(master,fetch_csv('pokemon_species.csv'),fetch_csv('pokemon.csv'),sleep_pokemon=fetch_sleep_pokemon())
     except Exception as e:
         if old:
             print('Candy upstream validation unavailable; retaining last validated master:',e)
@@ -167,12 +201,17 @@ def main():
         if any(by_member_new.get(i)!=root for i,root in by_member_old.items()):
             print('Candy family migration detected; retaining old master for explicit review')
             return
+        existing={f['id']:f.get('type') for f in old['families']
+                  if f.get('type') in CANDY_TYPES}
+        if any(existing.get(f['id']) not in (None,f['type']) for f in result['families']):
+            print('Previously verified candy item type changed; retaining master for review')
+            return
         if old['families']==result['families']:
             print('Candy family / special element metadata unchanged; retaining previous snapshot')
             return
     serial=json.dumps(result,ensure_ascii=False,separators=(',',':'))
     CANDY.write_text(serial+'\n',encoding='utf-8')
     SEED.write_text('window.__CANDY_MASTER__='+serial+';\n',encoding='utf-8')
-    print('Updated candy master:',len(result['families']),'families; schema 2')
+    print('Updated candy master:',len(result['families']),'families; schema 3')
 
 if __name__=='__main__':main()
