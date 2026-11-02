@@ -1,15 +1,18 @@
 'use strict';
 /* No third-party JS, no analytics, no external account. All personal ratings stay in this browser. */
 (() => {
-  const KEYS={ratings:'gense-note-ratings-v1',overrides:'gense-note-islands-v1',prefs:'gense-note-prefs-v1',master:'gense-note-master-v1'};
+  const KEYS={ratings:'gense-note-ratings-v1',overrides:'gense-note-islands-v1',prefs:'gense-note-prefs-v1',master:'gense-note-master-v1',candy:'gense-note-candy-priorities-v1',candyMaster:'gense-note-candy-master-v1'};
   const AREAS=['ワカクサ本島','シアンの砂浜','トープ洞窟','ウノハナ雪原','ラピスラズリ湖畔','ゴールド旧発電所','アンバー渓谷','ワカクサ本島 EX','シアンの砂浜 EX'];
   // Field header imagery is hosted in the app itself, not fetched on each visit.
   const LEVELS=[{id:'star',symbol:'☆',label:'最優先'},{id:'double',symbol:'◎',label:'高優先'},{id:'circle',symbol:'○',label:'優先'},{id:'triangle',symbol:'△',label:'低優先'},{id:'cross',symbol:'×',label:'不要'}];
   const GRADE_IDS=new Set(LEVELS.map(x=>x.id));
+  const CANDY_LEVELS=[{id:'use',label:'優先投入'},{id:'candidate',label:'投入候補'},{id:'hold',label:'保留'},{id:'save',label:'温存'}];
+  const CANDY_IDS=new Set(CANDY_LEVELS.map(x=>x.id));
+  const CANDY_KINDS={regional:'リージョン',mega:'メガシンカ',gmax:'キョダイマックス'};
   const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
-  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null};
+  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all'};
   // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
   const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
   const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
@@ -31,6 +34,7 @@
     return result;
   }
   const masterSeed=window.__SEED_MASTER__;
+  const candySeed=window.__CANDY_MASTER__;
   const $=(s,root=document)=>root.querySelector(s);
   const htmlEscape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   // Match only from the beginning of a name; hiragana and katakana are equivalent.
@@ -80,15 +84,44 @@
     };
   })():base;
   const master={...combinedMaster,pokemon:canonicalizePokemon(combinedMaster.pokemon)};
+  function validCandyMaster(value){
+    if(!value||value.schema!==1||!Array.isArray(value.families)||value.families.length<70)return false;
+    const keys=new Set(),members=new Set();
+    for(const f of value.families){
+      if(!Number.isInteger(f.id)||f.id<1||keys.has(f.id)||!Number.isInteger(f.labelId)
+        ||!Array.isArray(f.members)||!f.members.includes(f.labelId)
+        ||!f.special||typeof f.special!=='object')return false;
+      keys.add(f.id);
+      for(const id of f.members){
+        if(!Number.isInteger(id)||id<1||members.has(id))return false;
+        members.add(id);
+      }
+      if(Object.keys(CANDY_KINDS).some(k=>!Array.isArray(f.special[k])
+        ||f.special[k].some(id=>!Number.isInteger(id)||id<1)))return false;
+    }
+    return members.size>=200;
+  }
+  const cachedCandy=fromLocal(KEYS.candyMaster,null);
+  const candyMaster=validCandyMaster(cachedCandy)
+    &&(!validCandyMaster(candySeed)||Date.parse(cachedCandy.updatedAt)>Date.parse(candySeed.updatedAt))
+    ?cachedCandy:candySeed;
+  const candyPrefs=fromLocal(KEYS.candy,{});
+  const candyRatings={};
+  if(candyPrefs&&typeof candyPrefs==='object'&&!Array.isArray(candyPrefs))
+    for(const [id,value] of Object.entries(candyPrefs))
+      if(/^(?:[1-9]\d*|pending:[1-9]\d*)$/.test(id)&&CANDY_IDS.has(value))
+        candyRatings[id]=value;
   const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};
-  if(!['dex','search'].includes(prefs.tab))prefs.tab='dex';
+  if(!['dex','search','candy'].includes(prefs.tab))prefs.tab='dex';
+  if(!['all',...CANDY_LEVELS.map(x=>x.id),'none'].includes(prefs.candyTier))prefs.candyTier='all';
+  if(!['all',...Object.keys(CANDY_KINDS),'any','none'].includes(prefs.candySpecial))prefs.candySpecial='all';
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
   // Migrate v0.1.2's onlyRated preference without changing any stored ratings.
   // An explicitly saved empty array means 'show no grades', not 'reset filter'.
   prefs.searchGrades=Array.isArray(prefs.searchGrades)
     ? [...new Set(prefs.searchGrades.filter(g=>SEARCH_GRADE_IDS.includes(g)))]
     : SEARCH_GRADE_IDS.filter(g=>g!=='none'||prefs.onlyRated===false);
-  const state={master,ratings:fromLocal(KEYS.ratings,{}),overrides:fromLocal(KEYS.overrides,{}),prefs,icons:new Map(),selected:null,status:'',imageBusy:false};
+  const state={master,candyMaster,candyRatings,ratings:fromLocal(KEYS.ratings,{}),overrides:fromLocal(KEYS.overrides,{}),prefs,icons:new Map(),selected:null,selectedCandy:null,status:'',imageBusy:false};
   let dbPromise=null,toastTimer=null,loadingMaster=false;
   const nowJST=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=k=>parts.find(x=>x.type===k)?.value;return `${get('year')}-${get('month')}-${get('day')}`;};
   function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600)}
@@ -308,6 +341,101 @@
     return `<article class="mon-card" data-grade="${g}" data-key="${key}"><button class="mon-profile" type="button" data-action="pokemon" data-key="${key}" aria-label="${name}の詳細・アイコン・出現島を編集">${iconMarkup(p)}<span class="mon-meta"><span class="mon-number">No.${String(p.id).padStart(4,'0')}</span><span class="mon-name">${name}</span><span class="grade-label" data-grade="${g}">${label.symbol} ${label.label}</span></span><span class="mon-chevron" aria-hidden="true">›</span></button><div class="quick-grades" role="group" aria-label="${name}の厳選優先度">${grades}</div></article>`;
   }
   function compactCard(p){const g=grade(p.key),label=gradeInfo(g);return `<button class="mini-mon" type="button" data-action="pokemon" data-key="${htmlEscape(p.key)}" data-grade="${g}" aria-label="${htmlEscape(p.name)}、${label.label}、評価を変更">${iconMarkup(p)}<span class="mini-mon-name">${htmlEscape(p.name)}</span></button>`}
+  function candyChoice(id){return CANDY_IDS.has(state.candyRatings[id])?state.candyRatings[id]:'none'}
+  function candyFamilies(){
+    const all=getPokemon(),byId=new Map();
+    for(const p of all){
+      const current=byId.get(p.id);
+      if(!current||((current.form||'')!==''&&!(p.form||'')))byId.set(p.id,p);
+    }
+    const groups=[],covered=new Set();
+    for(const f of state.candyMaster?.families||[]){
+      const members=f.members.filter(id=>byId.has(id));
+      if(!members.length)continue;
+      members.forEach(id=>covered.add(id));
+      const label=byId.get(f.labelId)||byId.get(members[0]);
+      groups.push({...f,key:String(f.id),label:label.name+'のアメ',representative:label,
+        memberNames:members.map(id=>byId.get(id).name),unknown:false});
+    }
+    // A newly added Pokémon remains visible without guessing an evolution
+    // relation or claiming that it has no special forms.
+    for(const [id,p] of byId)if(!covered.has(id))
+      groups.push({id,key:'pending:'+id,label:p.name+'のアメ（仮）',representative:p,
+        memberNames:[p.name],special:{regional:[],mega:[],gmax:[]},unknown:true});
+    return groups;
+  }
+  function candyBadge(f){
+    if(f.unknown)return '特殊形態：未確認';
+    const kinds=Object.entries(CANDY_KINDS).filter(([key])=>f.special[key]?.length).map(([,label])=>label);
+    return kinds.length?kinds.join(' / '):'特殊形態なし（取得元の範囲）';
+  }
+  function candyShell(){
+    const tiers=[{id:'all',text:'すべて'},...CANDY_LEVELS.map(t=>({id:t.id,text:t.label})),{id:'none',text:'未設定'}];
+    const specials=[{id:'all',text:'すべて'},{id:'any',text:'特殊形態あり'},
+      ...Object.entries(CANDY_KINDS).map(([id,text])=>({id,text})),
+      {id:'none',text:'特殊形態なし'}];
+    return '<section class="toolbar candy-toolbar" aria-label="ウッウロボ絞り込み">'
+      +'<input class="search-input" id="search" type="search" placeholder="ポケモン・アメを検索" value="'+htmlEscape(state.prefs.search)+'" autocomplete="off">'
+      +'<div class="candy-filter-label">投入優先度</div>'+chips(tiers,state.prefs.candyTier,'candy-tier-filter')
+      +'<div class="candy-filter-label">特殊形態</div>'+chips(specials,state.prefs.candySpecial,'candy-special-filter')
+      +'</section><div id="results"></div>';
+  }
+  function renderCandyResults(el){
+    const search=normalize(state.prefs.search),tier=state.prefs.candyTier,special=state.prefs.candySpecial;
+    const order={use:0,candidate:1,hold:2,save:3,none:4};
+    const groups=candyFamilies().filter(f=>{
+      if(search&&!normalize(f.label).includes(search)
+        &&!f.memberNames.some(n=>normalize(n).includes(search))
+        &&!f.special?.regional?.some(id=>String(id).startsWith(search))
+        &&!String(f.id).startsWith(search))return false;
+      const value=candyChoice(f.key);
+      if(tier!=='all'&&tier!==value)return false;
+      const hasAny=Object.keys(CANDY_KINDS).some(k=>f.special[k]?.length);
+      if(special==='any'&&!hasAny)return false;
+      if(special==='none'&&(hasAny||f.unknown))return false;
+      if(special in CANDY_KINDS&&!f.special[special]?.length)return false;
+      return true;
+    }).sort((a,b)=>order[candyChoice(a.key)]-order[candyChoice(b.key)]
+      ||a.representative.id-b.representative.id);
+    const markup='<div class="section-top"><h3>アメ一覧</h3><span>'+groups.length+'件</span></div>'
+      +(groups.length?'<div class="candy-list">'+groups.map(f=>{
+        const tier=candyChoice(f.key);
+        const label=CANDY_LEVELS.find(x=>x.id===tier)?.label||'未設定';
+        return '<button type="button" class="candy-item" data-action="candy-detail" data-family-id="'+htmlEscape(f.key)+'" data-grade="'+tier+'">'
+          +iconMarkup(f.representative)
+          +'<span class="candy-item-info"><strong class="candy-name">'+htmlEscape(f.label)+'</strong>'
+          +'<small>'+htmlEscape(candyBadge(f))+'</small></span>'
+          +'<span class="candy-status" data-candy-tier="'+tier+'">'+htmlEscape(label)+'</span></button>';
+      }).join('')+'</div>':'<div class="empty-state">該当するアメがありません</div>');
+    patchResults(el,markup);
+  }
+  function selectedCandy(){return candyFamilies().find(f=>f.key===state.selectedCandy)}
+  function candyDetails(){
+    const f=selectedCandy();if(!f)return;
+    const tier=candyChoice(f.key);
+    const names=[...new Set(f.memberNames)].join('・');
+    const special=candyBadge(f);
+    $('#candy-details-body').innerHTML='<div class="sheet-top"><div class="subtle">ウッウロボ</div>'
+      +'<button type="button" class="close-button" data-action="close-candy" aria-label="閉じる">×</button></div>'
+      +'<div class="candy-modal-title"><h2>'+htmlEscape(f.label)+'</h2>'
+      +'<small>'+htmlEscape(special)+'</small></div>'
+      +'<p class="candy-family-members">'+htmlEscape(names)+'</p>'
+      +'<p class="field-label">投入優先度</p>'
+      +'<div class="candy-level-options">'+CANDY_LEVELS.map(level=>
+        '<button type="button" class="candy-level-choice" data-action="candy-rate" data-tier="'+level.id+'" aria-pressed="'+(tier===level.id)+'">'+level.label+'</button>'
+      ).join('')+'</div>'
+      +'<button type="button" class="secondary-button candy-unset" data-action="candy-rate" data-tier="none">未設定に戻す</button>';
+  }
+  function setCandyChoice(id,tier){
+    if(tier!=='none'&&!CANDY_IDS.has(tier))return;
+    const updated={...state.candyRatings};
+    if(tier==='none')delete updated[id];else updated[id]=tier;
+    if(!setLocal(KEYS.candy,updated))return;
+    state.candyRatings=updated;
+    tabPanels.delete('candy');
+    renderResults();updateRatedCounter();dialogClose('#candy-details');
+    toast(tier==='none'?'未設定に戻しました':'投入優先度を設定しました');
+  }
   function chips(options,value,action,attr='value'){return `<div class="chips">${options.map(x=>`<button type="button" class="chip ${value===x.id?'active':''}" data-action="${action}" data-${attr}="${htmlEscape(x.id)}" ${x.grade?`data-grade="${x.grade}"`:''} aria-pressed="${value===x.id?'true':'false'}">${x.text}</button>`).join('')}</div>`}
   function filterPokemon(){const {search,sleep,grade:filterGrade}=state.prefs;const prefix=normalize(search);return getPokemon().filter(p=>{
     if(prefix&&!normalize(p.name).startsWith(prefix)&&!String(p.id).startsWith(prefix))return false;
@@ -316,7 +444,14 @@
     return true;
   });}
   function countRated(){return getPokemon().filter(p=>grade(p.key)!=='none').length}
-  function updateRatedCounter(){const counter=$('#rated-count');if(counter)counter.textContent=countRated();const total=$('#total-count');if(total)total.textContent=getPokemon().length;}
+  function updateRatedCounter(){
+    const candy=state.prefs.tab==='candy',families=candy?candyFamilies():null;
+    const counted=candy?families.filter(f=>candyChoice(f.key)!=='none').length:countRated();
+    const counter=$('#rated-count'),total=$('#total-count'),label=$('.header-count > span');
+    if(counter)counter.textContent=counted;
+    if(total)total.textContent=candy?families.length:getPokemon().length;
+    if(label)label.textContent=candy?'設定済み':'評価済み';
+  }
   function warning(){if(state.master.areasReady)return '';const m=Object.keys(state.overrides).length;return `<div class="sync-notice">島別の出現マスターは未同期です。図鑑での評価は利用できます。${m?'手動登録した島のデータは表示できます。':''} GitHub Actionsの初回更新が成功すると自動で反映されます。 <button class="link-button" data-action="sync">更新を確認</button></div>`}
   function sleepFilter(){return `<div class="filter-line">${chips([{id:'all',text:'すべて'},...SLEEP_TYPES.map(t=>({id:t.id,text:sleepDot(t.id)+' '+t.id}))],state.prefs.sleep,'sleep')}</div>`}
   function dexShell(){const opts=[{id:'all',text:'すべて'},{id:'star',text:'☆',grade:'star'},{id:'double',text:'◎',grade:'double'},{id:'circle',text:'○',grade:'circle'},{id:'triangle',text:'△',grade:'triangle'},{id:'cross',text:'×',grade:'cross'},{id:'none',text:'未評価'}];return `<section class="toolbar" aria-label="図鑑絞り込み"><input class="search-input" id="search" type="search" placeholder="検索" value="${htmlEscape(state.prefs.search)}" autocomplete="off">${chips(opts,state.prefs.grade,'grade')}${sleepFilter()}</section><div id="results"></div>`}
@@ -366,6 +501,8 @@
   const retainedCards=new Map(),MAX_RETAINED_CARDS=1100;
   const resultMarkup=new WeakMap(),islandPanelMarkup=new WeakMap();
   function retainedCardKey(card){
+    const candy=card.dataset.familyId;
+    if(card.classList.contains('candy-item'))return candy?'candy:'+candy:null;
     const species=card.dataset.key;
     if(!species)return null;
     if(card.classList.contains('mon-card'))return 'dex:'+species;
@@ -388,7 +525,7 @@
     if(resultMarkup.get(el)===markup)return; // No DOM updates if data is unchanged.
     const template=document.createElement('template');
     template.innerHTML=markup;
-    for(const card of el.querySelectorAll('.mon-card,.mini-mon')){
+    for(const card of el.querySelectorAll('.mon-card,.mini-mon,.candy-item')){
       const key=retainedCardKey(card);
       if(key)retainCard(key,card);
     }
@@ -404,15 +541,18 @@
         islandPanelMarkup.set(incoming,signature);
       }
     }
-    for(const fresh of template.content.querySelectorAll('.mon-card,.mini-mon')){
+    for(const fresh of template.content.querySelectorAll('.mon-card,.mini-mon,.candy-item')){
       const key=retainedCardKey(fresh);
       if(!key)continue;
       const saved=retainedCards.get(key),source=iconSignature(fresh);
       if(!saved||saved.card===fresh||saved.source!==source)continue; // Same island or changed icon.
       const previous=saved.card;
       if(previous.dataset.grade===fresh.dataset.grade &&
-         previous.querySelector('.mon-name,.mini-mon-name')?.textContent===
-         fresh.querySelector('.mon-name,.mini-mon-name')?.textContent){
+         previous.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent===
+         fresh.querySelector('.mon-name,.mini-mon-name,.candy-name')?.textContent &&
+         (!fresh.classList.contains('candy-item') ||
+           previous.querySelector('.candy-item-info small')?.textContent===
+           fresh.querySelector('.candy-item-info small')?.textContent)){
         fresh.replaceWith(previous); // Preserve the whole unchanged card.
         retainCard(key,previous);
       }else{
@@ -425,7 +565,9 @@
     el.replaceChildren(template.content);
     resultMarkup.set(el,markup);
   }
-  function renderResults(){const el=$('#results');if(!el)return;const all=filterPokemon();if(state.prefs.tab==='dex'){
+  function renderResults(){const el=$('#results');if(!el)return;
+    if(state.prefs.tab==='candy'){renderCandyResults(el);discoverSprites();return}
+    const all=filterPokemon();if(state.prefs.tab==='dex'){
     const markup=`<div class="section-top"><h3>図鑑一覧</h3><span>${all.length}件</span></div>`+(all.length?`<div class="dex-grid">${all.map(card).join('')}</div>`:`<div class="empty-state"><span class="symbol">⌕</span><strong>該当するポケモンがありません</strong>検索や絞り込みを変更してください。</div>`);
     patchResults(el,markup);
   }else renderSearchResults(el,all);
@@ -434,6 +576,7 @@
   // Keep the actual decoded <img> elements when switching tabs. Rebuilding
   // innerHTML on every tab switch detached all images and flashed placeholders.
   // Invalidate cached panels whenever ratings, icons, or master data change.
+  const shellForTab=()=>state.prefs.tab==='dex'?dexShell():state.prefs.tab==='candy'?candyShell():searchShell();
   const tabPanels=new Map();
   let currentPanelTab=null;
   function render(reusePanels=false,keepLeavingPanel=true){
@@ -443,7 +586,7 @@
     if(!reusePanels&&currentPanelTab===state.prefs.tab&&main.firstElementChild){
       const panel=main.firstElementChild,results=panel.querySelector('#results');
       const template=document.createElement('template');
-      template.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();
+      template.innerHTML=shellForTab();
       const freshResults=template.content.querySelector('#results');
       if(results&&freshResults)freshResults.replaceWith(results);
       panel.replaceChildren(template.content);
@@ -466,7 +609,7 @@
     if(!panel){
       panel=document.createElement('div');
       panel.dataset.tabPanel=state.prefs.tab;
-      panel.innerHTML=state.prefs.tab==='dex'?dexShell():searchShell();
+      panel.innerHTML=shellForTab();
       tabPanels.set(state.prefs.tab,panel);
     }
     main.append(panel);
@@ -495,7 +638,7 @@
   function details(){const p=selected();if(!p)return;const g=grade(p.key),islands=islandList(p),custom=Object.hasOwn(state.overrides,p.key);$('#details-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><div class="subtle">No. ${String(p.id).padStart(4,'0')}　${htmlEscape(p.sleep)}</div><button class="close-button" data-action="close-details" aria-label="閉じる">×</button></div><div class="sheet-pokemon">${iconMarkup(p)}<div><h2>${htmlEscape(p.name)}</h2><p>${islands.length?islands.map(x=>AREAS[x]).join(' / '):'出現島の情報は未設定'}</p></div></div><p class="field-label">厳選優先度を選択</p><div class="grade-options">${LEVELS.map(x=>`<button class="grade-choice ${g===x.id?'active':''}" data-action="rate" data-grade="${x.id}" aria-pressed="${g===x.id}"><span>${x.symbol}</span><span>${x.label}</span></button>`).join('')}</div><div class="sheet-actions"><button class="secondary-button" data-action="unrate">未評価に戻す</button><button class="secondary-button" data-action="upload-icon">アイコン変更</button>${state.icons.has(p.key)?'<button class="secondary-button" data-action="reset-icon">画像解除</button>':''}</div><details><summary>出現する島を手動で修正 ${custom?'（手動設定中）':''}</summary><div class="island-options">${AREAS.map((a,i)=>`<label class="island-option"><input type="checkbox" data-action="island-toggle" data-island="${i}" ${islands.includes(i)?'checked':''}> ${htmlEscape(a)}</label>`).join('')}</div><button class="secondary-button" data-action="reset-islands">マスターの島データに戻す</button><p class="small-note">手動で変更した島の設定は、マスターが更新されても維持されます。</p></details><p class="small-note">優先度やアップロード画像はこの端末に保存されます。端末移行には設定からバックアップしてください。</p>`;
     if($('#details').open)activateDetailSprite();
   }
-  function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・島の手動修正・登録したアイコンをJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
+  function settings(){const stamp=state.master.updatedAt||'不明';const mapped=getPokemon().filter(p=>islandList(p).length).length;$('#settings-body').innerHTML=`<div class="sheet-grip"></div><div class="sheet-top"><h2>設定・データ管理</h2><button class="close-button" data-action="close-settings" aria-label="閉じる">×</button></div><div class="setting-block"><h3>ポケモンマスター</h3><p>${getPokemon().length}件 / 島が設定済み ${mapped}件<br>更新日時：${htmlEscape(stamp)}<br>島別マスター：${state.master.areasReady?'取得済み':'未取得（初期データ）'}<br>外部更新：${state.status?htmlEscape(state.status):'起動時に確認'}</p><div class="setting-actions"><button class="primary-button" data-action="sync">最新データを確認</button></div><p class="small-note">公開後はGitHub Actionsで毎日マスターを検証・更新します。新規ポケモンの図鑑登録はオンライン時に直接確認も行います。</p></div><div class="setting-block"><h3>バックアップ・復元</h3><p>厳選評価・ウッウロボの投入優先度・島設定・登録画像をJSONに保存します。</p><div class="setting-actions"><button class="secondary-button" data-action="backup">バックアップ保存</button><button class="secondary-button" data-action="restore">バックアップ読込</button></div></div><div class="setting-block"><h3>情報・注意</h3><p>このツールは非公式の個人用ファンツールです。ポケモンアイコンはPokeAPI Spritesから取得し、表示できた画像はオフライン用にキャッシュします。リージョンのすがたは専用画像IDを使い、画像が未提供なら名前を表示します。画像は個別にアップロードできます。標準画像はゲーム内の専用アイコンと同一とは限りません。</p><button class="secondary-button danger-button" data-action="clear-ratings">すべての評価を消去</button></div>`}
   function updateGrade(k,g){
     const previous=grade(k);
     if(g==='none')delete state.ratings[k];else state.ratings[k]=g;
@@ -543,7 +686,7 @@
     const counter=$('#rated-count');if(counter)counter.textContent=countRated();
   }
   function switchTab(tab){
-    if(!['dex','search'].includes(tab)||tab===state.prefs.tab)return;
+    if(!['dex','search','candy'].includes(tab)||tab===state.prefs.tab)return;
     // The search is reset on tab switches; never reuse a filtered panel.
     const keepLeavingPanel=!state.prefs.search;
     state.prefs.tab=tab;state.prefs.search='';save();
@@ -604,7 +747,7 @@
   function imageAsDataURL(file){return new Promise((resolve,reject)=>{if(!file||file.size>8*1024*1024||!['image/jpeg','image/png','image/webp'].includes(file.type))return reject(Error('PNG・JPEG・WebP、8MB以内の画像を指定してください'));const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{try{const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');const scale=Math.min(128/img.width,128/img.height);const w=img.width*scale,h=img.height*scale;ctx.clearRect(0,0,128,128);ctx.drawImage(img,(128-w)/2,(128-h)/2,w,h);const data=canvas.toDataURL('image/png');URL.revokeObjectURL(url);resolve(data)}catch(e){URL.revokeObjectURL(url);reject(e)}};img.onerror=()=>{URL.revokeObjectURL(url);reject(Error('画像を読み込めませんでした'))};img.src=url})}
   async function handleIconInput(file){const p=selected();if(!p)return;try{const data=await imageAsDataURL(file);await setIcon(p.key,data)}catch(e){toast(e.message||'画像処理に失敗しました')}}
   function downloadJSON(obj,name){const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-  function backup(){downloadJSON({app:'pokesleep-priority',version:1,date:new Date().toISOString(),ratings:state.ratings,overrides:state.overrides,icons:Object.fromEntries(state.icons)},`gense-note-backup-${nowJST()}.json`);toast('バックアップファイルを保存しました')}
+  function backup(){downloadJSON({app:'pokesleep-priority',version:1,date:new Date().toISOString(),ratings:state.ratings,overrides:state.overrides,candyRatings:state.candyRatings,icons:Object.fromEntries(state.icons)},`gense-note-backup-${nowJST()}.json`);toast('バックアップファイルを保存しました')}
   function sanitizedRatings(obj){const safe={};if(obj&&typeof obj==='object'&&!Array.isArray(obj)){for(const [k,v] of Object.entries(obj))if(/^\d+:[A-Za-z0-9 _-]+$/.test(k)&&GRADE_IDS.has(v))safe[k]=v}return safe}
   function sanitizedOverrides(obj){const safe={};if(obj&&typeof obj==='object'&&!Array.isArray(obj)){for(const [k,v] of Object.entries(obj))if(/^\d+:[A-Za-z0-9 _-]+$/.test(k)&&Array.isArray(v))safe[k]=[...new Set(v.filter(n=>Number.isInteger(n)&&n>=0&&n<9))].sort((a,b)=>a-b)}return safe}
   async function restore(file){
@@ -630,13 +773,25 @@
         !/^\d+:[A-Za-z0-9 _-]+$/.test(key)||!Array.isArray(islands)
         ||islands.some(n=>!Number.isInteger(n)||n<0||n>=AREAS.length)))
         throw Error('バックアップ内の島設定が不正です');
+      // v1 backups created before the candy feature intentionally omit
+      // candyRatings. Preserve current candy choices when importing them.
+      const hasCandy=Object.hasOwn(input,'candyRatings');
+      if(hasCandy&&(!isRecord(input.candyRatings)||Object.entries(input.candyRatings).some(
+        ([key,value])=>!/^(?:[1-9]\d*|pending:[1-9]\d*)$/.test(key)||!CANDY_IDS.has(value))))
+        throw Error('バックアップ内のウッウロボ優先度が不正です');
+      const restoredCandy=hasCandy?input.candyRatings:state.candyRatings;
       const ratings=sanitizedRatings(input.ratings),overrides=sanitizedOverrides(input.overrides);
       if(!confirm('現在の厳選優先度・手動設定をバックアップの内容に置き換えます。続けますか？'))return;
-      const formerRatings=state.ratings,formerOverrides=state.overrides;
+      const formerRatings=state.ratings,formerOverrides=state.overrides,formerCandy=state.candyRatings;
       if(!setLocal(KEYS.ratings,ratings))throw Error('評価を保存できませんでした');
       if(!setLocal(KEYS.overrides,overrides)){
         setLocal(KEYS.ratings,formerRatings);
         throw Error('島設定を保存できませんでした');
+      }
+      if(!setLocal(KEYS.candy,restoredCandy)){
+        setLocal(KEYS.ratings,formerRatings);
+        setLocal(KEYS.overrides,formerOverrides);
+        throw Error('ウッウロボ優先度を保存できませんでした');
       }
       try{
         // One transaction: either ALL icons are replaced or NONE are.
@@ -645,9 +800,10 @@
       }catch(error){
         setLocal(KEYS.ratings,formerRatings);
         setLocal(KEYS.overrides,formerOverrides);
+        setLocal(KEYS.candy,formerCandy);
         throw error;
       }
-      state.ratings=ratings;state.overrides=overrides;
+      state.ratings=ratings;state.overrides=overrides;state.candyRatings=restoredCandy;
       state.icons=new Map(candidates);
       dialogClose('#settings-dialog');render();toast('バックアップを復元しました');
     }catch(error){toast(`復元失敗：${error.message||'JSON形式を確認してください'}`)}
@@ -698,12 +854,45 @@
     const interval=previous.ok?6*60*60*1000:30*60*1000;
     return previous.slot!==slot||!Number.isFinite(age)||age<0||age>=interval;
   }
+  function mergeCandyMaster(incoming){
+    if(!validCandyMaster(incoming))return false;
+    const older=Date.parse(state.candyMaster?.updatedAt||'');
+    const newer=Date.parse(incoming.updatedAt||'');
+    if(Number.isFinite(older)&&Number.isFinite(newer)&&newer<older)return false;
+    if(JSON.stringify(state.candyMaster?.families)===JSON.stringify(incoming.families))return true;
+    // A new species may have been temporarily shown as "unconfirmed".
+    // Complete its saved-priority migration BEFORE switching the mapping.
+    const priorChoices=state.candyRatings,changed={...priorChoices},migration=new Map();
+    for(const f of incoming.families)for(const id of f.members)migration.set(id,String(f.id));
+    for(const [key,value] of Object.entries(changed)){
+      const match=/^pending:(\d+)$/.exec(key);
+      if(!match)continue;
+      const target=migration.get(Number(match[1]));
+      if(!target)continue;
+      if(!CANDY_IDS.has(changed[target]))changed[target]=value;
+      delete changed[key];
+    }
+    const choicesChanged=JSON.stringify(changed)!==JSON.stringify(priorChoices);
+    if(choicesChanged&&!setLocal(KEYS.candy,changed))return false;
+    if(!setLocal(KEYS.candyMaster,incoming)){
+      if(choicesChanged)setLocal(KEYS.candy,priorChoices);
+      return false;
+    }
+    state.candyMaster=incoming;
+    if(choicesChanged)state.candyRatings=changed;
+    if(state.prefs.tab==='candy')render();
+    return true;
+  }
   async function refreshMaster(force=false){
     if(loadingMaster||!shouldCheckMaster(force))return;
     loadingMaster=true;
     const checkSlot=masterCheckSlot();
     const previousStatus=state.status;state.status='確認中';let errors=[];let newCount=0;let siteUpdate=false;
     try{const latest=await fetchJSON(`./data/master.json?v=${Date.now()}`);if(validMaster(latest)){newCount+=mergeMaster(latest);siteUpdate=true}else errors.push('公開マスターの検証に失敗')}catch(e){errors.push('公開マスターを取得できません')}
+    try{
+      const candy=await fetchJSON(`./data/candy-master.json?v=${Date.now()}`);
+      if(!mergeCandyMaster(candy))errors.push('アメマスターの検証に失敗');
+    }catch(e){errors.push('アメマスターを取得できません')}
     // Netlify fallback only when no validated static master exists. Do not replace
     // an already verified offline 9-island snapshot with an older live result.
     const today=nowJST();
@@ -733,6 +922,9 @@
     if(action==='tab')switchTab(b.dataset.tab);
     if(action==='pokemon'){state.selected=b.dataset.key;details();dialogOpen('#details');activateDetailSprite()}
     if(action==='quick-rate')quickRate(b)
+    if(action==='candy-detail'){state.selectedCandy=b.dataset.familyId;candyDetails();dialogOpen('#candy-details')}
+    if(action==='close-candy')dialogClose('#candy-details');
+    if(action==='candy-rate')setCandyChoice(state.selectedCandy,b.dataset.tier);
     if(action==='settings'){settings();dialogOpen('#settings-dialog')}
     if(action==='close-details')dialogClose('#details');
     if(action==='close-settings')dialogClose('#settings-dialog');
@@ -742,6 +934,8 @@
     if(action==='search-grade-toggle'&&SEARCH_GRADE_IDS.includes(b.dataset.grade)){const chosen=new Set(state.prefs.searchGrades);if(chosen.has(b.dataset.grade))chosen.delete(b.dataset.grade);else chosen.add(b.dataset.grade);state.prefs.searchGrades=SEARCH_GRADE_IDS.filter(g=>chosen.has(g));save();render()}
     if(action==='search-grade-preset'){if(b.dataset.preset==='all')state.prefs.searchGrades=[...SEARCH_GRADE_IDS];else if(b.dataset.preset==='none')state.prefs.searchGrades=[];else return;save();render()}
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
+    if(action==='candy-tier-filter'){state.prefs.candyTier=b.dataset.value;save();render()}
+    if(action==='candy-special-filter'){state.prefs.candySpecial=b.dataset.value;save();render()}
     if(action==='upload-icon')$('#icon-input').click();
     if(action==='reset-icon'&&state.selected)await setIcon(state.selected,null);
     if(action==='reset-islands'&&state.selected){
@@ -812,8 +1006,8 @@
   },true);
   $('#icon-input').addEventListener('change',async ev=>{await handleIconInput(ev.target.files?.[0]);ev.target.value=''});
   $('#restore-input').addEventListener('change',async ev=>{await restore(ev.target.files?.[0]);ev.target.value=''});
-  ['#details','#settings-dialog'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target===$(id))dialogClose(id)}));
-  window.addEventListener('storage',ev=>{if(ev.key===KEYS.ratings)state.ratings=fromLocal(KEYS.ratings,{});if(ev.key===KEYS.overrides)state.overrides=fromLocal(KEYS.overrides,{});render()});
+  ['#details','#settings-dialog','#candy-details'].forEach(id=>$(id).addEventListener('click',ev=>{if(ev.target===$(id))dialogClose(id)}));
+  window.addEventListener('storage',ev=>{if(ev.key===KEYS.ratings)state.ratings=fromLocal(KEYS.ratings,{});if(ev.key===KEYS.overrides)state.overrides=fromLocal(KEYS.overrides,{});if(ev.key===KEYS.candy)state.candyRatings=fromLocal(KEYS.candy,{});render()});
   // A full browser reload necessarily creates new DOM. Prime above-the-fold
   // cached sprites before initial render to avoid visible placeholder flashes.
   // This only reads local CacheStorage, never introduces extra network loads.

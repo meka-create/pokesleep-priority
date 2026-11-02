@@ -6,7 +6,7 @@ const start=app.indexOf('  const last=fromLocal(KEYS.master,null);');
 const end=app.indexOf('  const prefs=',start);
 assert.ok(p0>=0&&p1>p0&&start>=0&&end>start);
 function boot(cached,bundled){
- const ctx=vm.createContext({masterSeed:bundled,KEYS:{master:'master'},
+ const ctx=vm.createContext({masterSeed:bundled,candySeed:{schema:1,families:[]},KEYS:{master:'master',candyMaster:'candyMaster',candy:'candy'},
    fromLocal:()=>cached,Date,Set,Map,
    validMaster:o=>!!o&&Array.isArray(o.pokemon)&&o.pokemon.length>0
  });
