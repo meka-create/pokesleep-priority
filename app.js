@@ -15,7 +15,7 @@
   const SLEEP_TYPES=[{id:'うとうと'},{id:'すやすや'},{id:'ぐっすり'}];
   const sleepDot=type=>`<span class="sleep-type-dot" data-sleep="${htmlEscape(type)}" aria-hidden="true"></span>`;
   const SEARCH_GRADE_IDS=[...LEVELS.map(x=>x.id),'none'];
-  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all',candyKind:'all'};
+  const DEFAULT_PREFS={tab:'dex',search:'',sleep:'all',grade:'all',area:0,onlyRated:true,searchGrades:null,candyTier:'all',candySpecial:'all',candyKind:'all',candyType:'all'};
   // Match tools/species_policy.py. Retired form ratings/icons are not migrated.
   const EXCLUDED_MASTER_KEYS=new Set(["25:Low Key","25:Halloween2","133:Halloween2","710:Small","710:Large","710:Jumbo","711:Small","711:Large","711:Jumbo"]);
   const CANONICAL_MASTER_NAMES={"710:Medium":"バケッチャ","711:Medium":"パンプジン"};
@@ -125,8 +125,9 @@
   }
   if(!['all','any','none'].includes(prefs.candySpecial))prefs.candySpecial='all';
   if(!['all',...Object.keys(CANDY_KINDS)].includes(prefs.candyKind))prefs.candyKind='all';
-  // Retired v0.2.3 type filters must never hide candies after the control is removed.
-  delete prefs.candyType;
+  // First run must not reactivate an old v0.2.3 selection by surprise.
+  if(prefs.candyTypePickerVersion!==1){prefs.candyType='all';prefs.candyTypePickerVersion=1}
+  if(prefs.candyType!=='all'&&!Object.hasOwn(CANDY_TYPES,prefs.candyType))prefs.candyType='all';
   if(!Number.isInteger(prefs.area)||prefs.area<0||prefs.area>8)prefs.area=0;
   // Migrate v0.1.2's onlyRated preference without changing any stored ratings.
   // An explicitly saved empty array means 'show no grades', not 'reset filter'.
@@ -381,11 +382,72 @@
     const kinds=Object.entries(CANDY_KINDS).filter(([key])=>f.special[key]?.length).map(([,label])=>label);
     return kinds.length?kinds.join(' / '):'特殊要素なし';
   }
+  // Custom, scrollable popup kept outside clipped tab/card containers.
+  let candyTypePickerTrigger=null;
+  function closeCandyTypePicker(returnFocus=false){
+    const trigger=candyTypePickerTrigger;
+    candyTypePickerTrigger=null;
+    const menu=$('#candy-type-listbox');
+    menu.hidden=true;
+    menu.replaceChildren();
+    if(trigger?.isConnected){
+      trigger.setAttribute('aria-expanded','false');
+      if(returnFocus)trigger.focus({preventScroll:true});
+    }
+  }
+  function positionCandyTypePicker(){
+    const trigger=candyTypePickerTrigger;
+    if(!trigger?.isConnected){if(trigger)closeCandyTypePicker();return}
+    const menu=$('#candy-type-listbox'),rect=trigger.getBoundingClientRect();
+    const vw=document.documentElement.clientWidth,vh=window.innerHeight,inset=10,gap=6;
+    const width=Math.min(260,Math.max(210,rect.width),vw-inset*2);
+    menu.style.width=width+'px';
+    menu.style.left=Math.max(inset,Math.min(vw-inset-width,rect.right-width))+'px';
+    menu.style.height='auto';menu.style.maxHeight='none';menu.style.overflowY='hidden';
+    const fullHeight=Math.ceil(menu.getBoundingClientRect().height);
+    const below=Math.max(0,vh-rect.bottom-inset-gap);
+    const above=Math.max(0,rect.top-inset-gap);
+    const openAbove=below<Math.min(fullHeight,300)&&above>below;
+    const available=openAbove?above:below;
+    const height=Math.max(0,Math.min(fullHeight,available,Math.floor(vh*.70)));
+    menu.style.height=height+'px';menu.style.maxHeight=height+'px';
+    menu.style.overflowY=fullHeight>height+1?'auto':'hidden';
+    menu.style.top=Math.max(inset,Math.min(vh-inset-height,
+      openAbove?rect.top-gap-height:rect.bottom+gap))+'px';
+  }
+  function openCandyTypePicker(trigger,focusOption=true){
+    closeCandyTypePicker();
+    candyTypePickerTrigger=trigger;
+    const menu=$('#candy-type-listbox');
+    const chosen=state.prefs.candyType;
+    menu.innerHTML=[['all','すべて'],...Object.entries(CANDY_TYPES)].map(([type,label])=>
+      '<button type="button" class="candy-type-option" role="option"'
+      +' data-action="candy-type-option" data-type="'+type+'"'
+      +' aria-selected="'+(type===chosen)+'" tabindex="-1">'
+      +'<span class="candy-type-dot" aria-hidden="true"></span>'
+      +'<span class="candy-type-option-name">'+label+'</span>'
+      +'<span class="candy-type-check" aria-hidden="true">✓</span></button>').join('');
+    menu.hidden=false;menu.scrollTop=0;trigger.setAttribute('aria-expanded','true');
+    positionCandyTypePicker();
+    if(focusOption){
+      const selected=menu.querySelector('[aria-selected="true"]')||menu.querySelector('[role="option"]');
+      selected?.focus({preventScroll:true});
+      selected?.scrollIntoView({block:'nearest'});
+    }
+  }
+  function selectCandyType(type){
+    if(!candyTypePickerTrigger||!(type==='all'||Object.hasOwn(CANDY_TYPES,type)))return;
+    closeCandyTypePicker();
+    if(state.prefs.candyType!==type){state.prefs.candyType=type;save();render()}
+    $('#candy-type-trigger')?.focus({preventScroll:true});
+  }
   function candyShell(){
     const tierOptions=[{id:'all',symbol:'すべて',label:'すべて'},
       ...CANDY_LEVELS,{id:'none',symbol:'未設定',label:'未設定'}];
     const modes=[{id:'all',label:'すべて'},{id:'any',label:'あり'},{id:'none',label:'なし'}];
     const selected=state.prefs.candySpecial;
+    const currentType=state.prefs.candyType;
+    const currentTypeLabel=CANDY_TYPES[currentType]||'すべて';
     return '<section class="toolbar candy-toolbar" aria-label="ウッウロボ絞り込み">'
       +'<input class="search-input" id="search" type="search" placeholder="検索" value="'+htmlEscape(state.prefs.search)+'" autocomplete="off">'
       +'<div class="candy-filter-label">投入優先度</div>'
@@ -396,7 +458,16 @@
         +'<span class="candy-tier-symbol">'+htmlEscape(t.symbol)+'</span>'
         +(t.id==='all'||t.id==='none'?'':'<span class="candy-tier-name">'+htmlEscape(t.label)+'</span>')
         +'</button>').join('')+'</div>'
-      +'<div class="candy-filter-label">特殊要素</div>'
+      +'<div class="candy-type-filter">'
+      +'<span class="candy-filter-label" id="candy-type-label">アメのタイプ</span>'
+      +'<button type="button" id="candy-type-trigger" class="candy-type-trigger"'
+      +' data-action="candy-type-trigger" data-type="'+currentType+'"'
+      +' aria-label="アメのタイプ：'+currentTypeLabel+'" aria-haspopup="listbox"'
+      +' aria-controls="candy-type-listbox" aria-expanded="false">'
+      +'<span class="candy-type-current"><span class="candy-type-dot" aria-hidden="true"></span>'
+      +'<span>'+currentTypeLabel+'</span></span>'
+      +'<span class="candy-type-arrow" aria-hidden="true">▾</span></button></div>'
+      +'<div class="candy-filter-label">特殊要素</div>
       +'<div class="candy-special-modes" role="group" aria-label="特殊要素の有無">'
       +modes.map(m=>'<button type="button" class="candy-special-mode'+(selected===m.id?' active':'')+'"'
         +' data-action="candy-special-filter" data-value="'+m.id+'" aria-pressed="'+(selected===m.id)+'">'+m.label+'</button>').join('')+'</div>'
@@ -407,7 +478,7 @@
   }
   function renderCandyResults(el){
     const search=normalize(state.prefs.search),tier=state.prefs.candyTier;
-    const special=state.prefs.candySpecial,kind=state.prefs.candyKind;
+    const special=state.prefs.candySpecial,kind=state.prefs.candyKind,candyType=state.prefs.candyType;
     const order={use:0,candidate:1,hold:2,save:3,none:4};
     const groups=candyFamilies().filter(f=>{
       if(search&&!normalize(f.label).includes(search)
@@ -416,6 +487,7 @@
         &&!String(f.id).startsWith(search))return false;
       const value=candyChoice(f.key);
       if(tier!=='all'&&tier!==value)return false;
+      if(candyType!=='all'&&f.type!==candyType)return false;
       const hasAny=Object.keys(CANDY_KINDS).some(k=>f.special[k]?.length);
       if(special==='any'&&(!hasAny||(kind!=='all'&&!f.special[kind]?.length)))return false;
       if(special==='none'&&(hasAny||f.unknown))return false;
@@ -959,6 +1031,36 @@
     loadingMaster=false;
     if($('#settings-dialog').open)settings();if(force)toast(errors.length?`確認完了（一部取得失敗：${errors.length}件）`:(newCount?`新規${newCount}件を追加しました`:'最新データを確認しました'));
   }
+  const candyTypeMenu=$('#candy-type-listbox');
+  candyTypeMenu.addEventListener('keydown',ev=>{
+    const options=[...candyTypeMenu.querySelectorAll('[role="option"]')];
+    let i=options.indexOf(document.activeElement);
+    if(['ArrowDown','ArrowUp','Home','End'].includes(ev.key)){
+      ev.preventDefault();
+      if(ev.key==='Home')i=0;
+      else if(ev.key==='End')i=options.length-1;
+      else i=(i+(ev.key==='ArrowDown'?1:-1)+options.length)%options.length;
+      options[i]?.focus({preventScroll:true});
+      options[i]?.scrollIntoView({block:'nearest'});
+    }else if(ev.key==='Escape'){
+      ev.preventDefault();closeCandyTypePicker(true);
+    }else if(ev.key==='Tab')closeCandyTypePicker();
+  });
+  document.addEventListener('pointerdown',ev=>{
+    if(candyTypePickerTrigger&&!candyTypeMenu.contains(ev.target)
+      &&!candyTypePickerTrigger.contains(ev.target))closeCandyTypePicker();
+  },true);
+  document.addEventListener('keydown',ev=>{
+    const trigger=ev.target.closest?.('[data-action="candy-type-trigger"]');
+    if(!candyTypePickerTrigger && trigger
+      &&(ev.key==='ArrowDown'||ev.key==='ArrowUp')){
+      ev.preventDefault();openCandyTypePicker(trigger);
+    }else if(candyTypePickerTrigger&&ev.key==='Escape'){
+      ev.preventDefault();closeCandyTypePicker(true);
+    }
+  });
+  window.addEventListener('resize',()=>{if(candyTypePickerTrigger)positionCandyTypePicker()});
+  window.addEventListener('scroll',()=>{if(candyTypePickerTrigger)positionCandyTypePicker()},true);
   document.addEventListener('click',async ev=>{
     const b=ev.target.closest('[data-action]');if(!b||b.type==='checkbox')return;const action=b.dataset.action;
     if(action==='tab')switchTab(b.dataset.tab);
@@ -977,6 +1079,10 @@
     if(action==='search-grade-toggle'&&SEARCH_GRADE_IDS.includes(b.dataset.grade)){const chosen=new Set(state.prefs.searchGrades);if(chosen.has(b.dataset.grade))chosen.delete(b.dataset.grade);else chosen.add(b.dataset.grade);state.prefs.searchGrades=SEARCH_GRADE_IDS.filter(g=>chosen.has(g));save();render()}
     if(action==='search-grade-preset'){if(b.dataset.preset==='all')state.prefs.searchGrades=[...SEARCH_GRADE_IDS];else if(b.dataset.preset==='none')state.prefs.searchGrades=[];else return;save();render()}
     if(action==='sleep'){state.prefs.sleep=b.dataset.value;save();render()}
+    if(action==='candy-type-trigger'){
+      if(candyTypePickerTrigger===b)closeCandyTypePicker(true);else openCandyTypePicker(b);
+    }
+    if(action==='candy-type-option')selectCandyType(b.dataset.type);
     if(action==='candy-tier-filter'){state.prefs.candyTier=b.dataset.value;save();render()}
     if(action==='candy-special-filter'&&['all','any','none'].includes(b.dataset.value)){state.prefs.candySpecial=b.dataset.value;save();render()}
     if(action==='candy-kind-filter'&&['all',...Object.keys(CANDY_KINDS)].includes(b.dataset.value)){state.prefs.candyKind=b.dataset.value;save();render()}
