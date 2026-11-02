@@ -109,7 +109,7 @@
   const candyRatings={};
   if(candyPrefs&&typeof candyPrefs==='object'&&!Array.isArray(candyPrefs))
     for(const [id,value] of Object.entries(candyPrefs))
-      if(/^(?:[1-9]\\d*|pending:[1-9]\\d*)$/.test(id)&&CANDY_IDS.has(value))
+      if(/^(?:[1-9]\d*|pending:[1-9]\d*)$/.test(id)&&CANDY_IDS.has(value))
         candyRatings[id]=value;
   const prefs={...DEFAULT_PREFS,...fromLocal(KEYS.prefs,{})};
   if(!['dex','search','candy'].includes(prefs.tab))prefs.tab='dex';
@@ -341,6 +341,101 @@
     return `<article class="mon-card" data-grade="${g}" data-key="${key}"><button class="mon-profile" type="button" data-action="pokemon" data-key="${key}" aria-label="${name}の詳細・アイコン・出現島を編集">${iconMarkup(p)}<span class="mon-meta"><span class="mon-number">No.${String(p.id).padStart(4,'0')}</span><span class="mon-name">${name}</span><span class="grade-label" data-grade="${g}">${label.symbol} ${label.label}</span></span><span class="mon-chevron" aria-hidden="true">›</span></button><div class="quick-grades" role="group" aria-label="${name}の厳選優先度">${grades}</div></article>`;
   }
   function compactCard(p){const g=grade(p.key),label=gradeInfo(g);return `<button class="mini-mon" type="button" data-action="pokemon" data-key="${htmlEscape(p.key)}" data-grade="${g}" aria-label="${htmlEscape(p.name)}、${label.label}、評価を変更">${iconMarkup(p)}<span class="mini-mon-name">${htmlEscape(p.name)}</span></button>`}
+  function candyChoice(id){return CANDY_IDS.has(state.candyRatings[id])?state.candyRatings[id]:'none'}
+  function candyFamilies(){
+    const all=getPokemon(),byId=new Map();
+    for(const p of all){
+      const current=byId.get(p.id);
+      if(!current||((current.form||'')!==''&&!(p.form||'')))byId.set(p.id,p);
+    }
+    const groups=[],covered=new Set();
+    for(const f of state.candyMaster?.families||[]){
+      const members=f.members.filter(id=>byId.has(id));
+      if(!members.length)continue;
+      members.forEach(id=>covered.add(id));
+      const label=byId.get(f.labelId)||byId.get(members[0]);
+      groups.push({...f,key:String(f.id),label:label.name+'のアメ',representative:label,
+        memberNames:members.map(id=>byId.get(id).name),unknown:false});
+    }
+    // A newly added Pokémon remains visible without guessing an evolution
+    // relation or claiming that it has no special forms.
+    for(const [id,p] of byId)if(!covered.has(id))
+      groups.push({id,key:'pending:'+id,label:p.name+'のアメ（仮）',representative:p,
+        memberNames:[p.name],special:{regional:[],mega:[],gmax:[]},unknown:true});
+    return groups;
+  }
+  function candyBadge(f){
+    if(f.unknown)return '特殊形態：未確認';
+    const kinds=Object.entries(CANDY_KINDS).filter(([key])=>f.special[key]?.length).map(([,label])=>label);
+    return kinds.length?kinds.join(' / '):'特殊形態なし（取得元の範囲）';
+  }
+  function candyShell(){
+    const tiers=[{id:'all',text:'すべて'},...CANDY_LEVELS.map(t=>({id:t.id,text:t.label})),{id:'none',text:'未設定'}];
+    const specials=[{id:'all',text:'すべて'},{id:'any',text:'特殊形態あり'},
+      ...Object.entries(CANDY_KINDS).map(([id,text])=>({id,text})),
+      {id:'none',text:'特殊形態なし'}];
+    return '<section class="toolbar candy-toolbar" aria-label="ウッウロボ絞り込み">'
+      +'<input class="search-input" id="search" type="search" placeholder="ポケモン・アメを検索" value="'+htmlEscape(state.prefs.search)+'" autocomplete="off">'
+      +'<div class="candy-filter-label">投入優先度</div>'+chips(tiers,state.prefs.candyTier,'candy-tier-filter')
+      +'<div class="candy-filter-label">特殊形態</div>'+chips(specials,state.prefs.candySpecial,'candy-special-filter')
+      +'</section><div id="results"></div>';
+  }
+  function renderCandyResults(el){
+    const search=normalize(state.prefs.search),tier=state.prefs.candyTier,special=state.prefs.candySpecial;
+    const order={use:0,candidate:1,hold:2,save:3,none:4};
+    const groups=candyFamilies().filter(f=>{
+      if(search&&!normalize(f.label).includes(search)
+        &&!f.memberNames.some(n=>normalize(n).includes(search))
+        &&!f.special?.regional?.some(id=>String(id).startsWith(search))
+        &&!String(f.id).startsWith(search))return false;
+      const value=candyChoice(f.key);
+      if(tier!=='all'&&tier!==value)return false;
+      const hasAny=Object.keys(CANDY_KINDS).some(k=>f.special[k]?.length);
+      if(special==='any'&&!hasAny)return false;
+      if(special==='none'&&(hasAny||f.unknown))return false;
+      if(special in CANDY_KINDS&&!f.special[special]?.length)return false;
+      return true;
+    }).sort((a,b)=>order[candyChoice(a.key)]-order[candyChoice(b.key)]
+      ||a.representative.id-b.representative.id);
+    const markup='<div class="section-top"><h3>アメ一覧</h3><span>'+groups.length+'件</span></div>'
+      +(groups.length?'<div class="candy-list">'+groups.map(f=>{
+        const tier=candyChoice(f.key);
+        const label=CANDY_LEVELS.find(x=>x.id===tier)?.label||'未設定';
+        return '<button type="button" class="candy-item" data-action="candy-detail" data-family-id="'+htmlEscape(f.key)+'" data-grade="'+tier+'">'
+          +iconMarkup(f.representative)
+          +'<span class="candy-item-info"><strong class="candy-name">'+htmlEscape(f.label)+'</strong>'
+          +'<small>'+htmlEscape(candyBadge(f))+'</small></span>'
+          +'<span class="candy-status" data-candy-tier="'+tier+'">'+htmlEscape(label)+'</span></button>';
+      }).join('')+'</div>':'<div class="empty-state">該当するアメがありません</div>');
+    patchResults(el,markup);
+  }
+  function selectedCandy(){return candyFamilies().find(f=>f.key===state.selectedCandy)}
+  function candyDetails(){
+    const f=selectedCandy();if(!f)return;
+    const tier=candyChoice(f.key);
+    const names=[...new Set(f.memberNames)].join('・');
+    const special=candyBadge(f);
+    $('#candy-details-body').innerHTML='<div class="sheet-top"><div class="subtle">ウッウロボ</div>'
+      +'<button type="button" class="close-button" data-action="close-candy" aria-label="閉じる">×</button></div>'
+      +'<div class="candy-modal-title"><h2>'+htmlEscape(f.label)+'</h2>'
+      +'<small>'+htmlEscape(special)+'</small></div>'
+      +'<p class="candy-family-members">'+htmlEscape(names)+'</p>'
+      +'<p class="field-label">投入優先度</p>'
+      +'<div class="candy-level-options">'+CANDY_LEVELS.map(level=>
+        '<button type="button" class="candy-level-choice" data-action="candy-rate" data-tier="'+level.id+'" aria-pressed="'+(tier===level.id)+'">'+level.label+'</button>'
+      ).join('')+'</div>'
+      +'<button type="button" class="secondary-button candy-unset" data-action="candy-rate" data-tier="none">未設定に戻す</button>';
+  }
+  function setCandyChoice(id,tier){
+    if(tier!=='none'&&!CANDY_IDS.has(tier))return;
+    const updated={...state.candyRatings};
+    if(tier==='none')delete updated[id];else updated[id]=tier;
+    if(!setLocal(KEYS.candy,updated))return;
+    state.candyRatings=updated;
+    tabPanels.delete('candy');
+    renderResults();dialogClose('#candy-details');
+    toast(tier==='none'?'未設定に戻しました':'投入優先度を設定しました');
+  }
   function chips(options,value,action,attr='value'){return `<div class="chips">${options.map(x=>`<button type="button" class="chip ${value===x.id?'active':''}" data-action="${action}" data-${attr}="${htmlEscape(x.id)}" ${x.grade?`data-grade="${x.grade}"`:''} aria-pressed="${value===x.id?'true':'false'}">${x.text}</button>`).join('')}</div>`}
   function filterPokemon(){const {search,sleep,grade:filterGrade}=state.prefs;const prefix=normalize(search);return getPokemon().filter(p=>{
     if(prefix&&!normalize(p.name).startsWith(prefix)&&!String(p.id).startsWith(prefix))return false;
