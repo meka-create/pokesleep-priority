@@ -23,6 +23,20 @@ class CandyUpdaterTest(unittest.TestCase):
         self.assertEqual(legends,[150,151,243,244,245,380,381,488,491])
         self.assertEqual(pending,[56])
 
+    def test_new_cottonee_whimsicott_family_after_release(self):
+        released={p['id'] for p in self.master['pokemon']}
+        if 546 in released or 547 in released:
+            self.assertTrue({546,547}.issubset(released))
+            family=next(f for f in self.candy['families'] if f['id']==546)
+            self.assertEqual(family['labelId'],546)
+            self.assertEqual(family['members'],[546,547])
+            self.assertEqual(family['type'],'fairy')
+            self.assertTrue(all(not ids for ids in family['special'].values()),
+                            'These Pokémon have no listed special forms')
+        else:
+            self.assertFalse(any(546 in f['members'] or 547 in f['members']
+                                 for f in self.candy['families']))
+
     def test_candy_root_and_costume_classification(self):
         # Synthetic upstream CSV records reconstruct every current family
         # from the independently validated snapshot, so no network is needed.
