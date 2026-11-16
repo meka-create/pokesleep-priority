@@ -17,6 +17,7 @@ from bs4 import BeautifulSoup
 from seed import make_seed, REGIONAL_SPRITE_IDS, disambiguate_form_name
 from availability import master_from_availability
 from species_policy import included, name_for, normalize_records
+from official_fields import OFFICIAL_ENCOUNTERS
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT/'data'/'master.json'
@@ -148,6 +149,11 @@ def assemble(pokemon_data, translations, encounter_records, previous):
         # confirmed Pokémon (including time-limited/event appearances).
         if not islands and local.get('islands'):
             islands=list(local['islands'])
+        # Official announcement takes precedence while Wiki/sleep-dex lag the
+        # release. Restrict this to the confirmed, form-specific species key.
+        if key in OFFICIAL_ENCOUNTERS:
+            sleep, confirmed_islands = OFFICIAL_ENCOUNTERS[key]
+            islands=list(confirmed_islands)
         item={'key':key,'id':num,'name':named,'sleep':sleep,'islands':islands,'form':form}
         sprite_id=REGIONAL_SPRITE_IDS.get(key,local.get('spriteId'))
         if isinstance(sprite_id,int) and sprite_id>0:item['spriteId']=sprite_id
