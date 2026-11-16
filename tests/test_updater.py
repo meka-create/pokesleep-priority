@@ -117,10 +117,47 @@ class UpdateMasterTests(unittest.TestCase):
               for p in previous['pokemon']]
         result=master_from_availability(species,{},rows,previous)
         keys={p['key'] for p in result['pokemon']}
-        self.assertEqual(len(result['pokemon']),245)
+        self.assertEqual(len(result['pokemon']),len(previous['pokemon'])-len(EXCLUDED_KEYS))
         self.assertFalse(EXCLUDED_KEYS.intersection(keys))
         self.assertEqual(next(p for p in result['pokemon'] if p['key']=='710:Medium')['name'],'バケッチャ')
         self.assertEqual(next(p for p in result['pokemon'] if p['key']=='711:Medium')['name'],'パンプジン')
+
+
+    def test_new_species_use_exact_official_fields_on_wiki_and_fallback(self):
+        """Official 2026-11-16 field data must beat lagging upstream tables."""
+        from availability import master_from_availability, FIELD_KEYS
+        from official_fields import OFFICIAL_ENCOUNTERS
+        seed=make_seed()
+        mons=[{'id':p['id'],'name':p['name'],'form':p['form'],'sleepType':'snoozing'}
+              for p in seed['pokemon']]
+        mons += [
+            {'id':546,'name':'Cottonee','form':'','sleepType':'snoozing'},
+            {'id':547,'name':'Whimsicott','form':'','sleepType':'snoozing'},
+        ]
+        ja={'Cottonee':'モンメン','Whimsicott':'エルフーン'}
+        records={(p['id'],m.clean(p['name']),'すやすや',i)
+                 for i in range(9) for p in seed['pokemon'][:160]}
+        # The wiki can be behind, or even show an incomplete/wrong field.
+        records.update({(546,'モンメン','すやすや',2),
+                        (547,'エルフーン','すやすや',2)})
+        wiki=m.assemble(mons,ja,records,seed)
+        by_wiki={p['key']:p for p in wiki['pokemon']}
+        source=[{'id':'base','pokedex_number':str(p['id']),
+                 'availability':{'1_star':list(FIELD_KEYS)}}
+                for p in seed['pokemon']]
+        source += [{'id':'new','pokedex_number':str(i),
+                    'availability':{'1_star':['taupe_hollow']}}
+                   for i in (546,547)]
+        fallback=master_from_availability(mons,ja,source,seed)
+        by_fallback={p['key']:p for p in fallback['pokemon']}
+        for key,(sleep,fields) in OFFICIAL_ENCOUNTERS.items():
+            for known in (by_wiki,by_fallback):
+                self.assertIn(key,known)
+                self.assertEqual(known[key]['islands'],list(fields))
+                self.assertEqual(known[key]['sleep'],sleep)
+        # Never add a release to the Pokédex solely because official metadata exists.
+        without_new=m.assemble(mons[:-2],ja,records,seed)
+        self.assertNotIn('546:default',{p['key'] for p in without_new['pokemon']})
 
     def test_future_upstream_arrival_not_imported_early(self):
         import datetime as dt
