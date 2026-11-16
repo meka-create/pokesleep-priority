@@ -45,7 +45,14 @@ const context=vm.createContext({
 });
 vm.runInContext(app.slice(start,end),context);
 const families=vm.runInContext('candyFamilies()',context);
-assert.equal(families.length,108);
+assert.equal(families.length,candy.families.length,'All validated families must appear, including new releases');
+if(families.some(f=>f.id===546)){
+ const cottonee=families.find(f=>f.id===546);
+ assert.equal(cottonee.label,'モンメンのアメ');
+ assert.deepEqual([...cottonee.members],[546,547]);
+ assert.equal(cottonee.type,'fairy');
+ assert.equal(vm.runInContext('candyBadge',context)(cottonee),'特殊要素なし');
+}
 const bulba=families.find(f=>f.id===1);
 assert.ok(bulba.label.includes('フシギダネ'));
 assert.ok(vm.runInContext('candyBadge',context)(bulba).includes('メガシンカ'));
@@ -68,13 +75,13 @@ assert.ok(html.includes('<span class="candy-type-tag" data-type="grass">くさ</
 assert.ok(html.includes('<span class="candy-type-tag" data-type="normal">ノーマル</span>'));
 assert.ok(html.includes('<span class="candy-type-tag" data-type="fire">ほのお</span>'));
 assert.ok(html.includes('<span class="candy-type-tag" data-type="water">みず</span>'));
-assert.equal((html.match(/class="candy-type-tag"/g)||[]).length,108);
-assert.equal((html.match(/class="candy-chevron"/g)||[]).length,108);
+assert.equal((html.match(/class="candy-type-tag"/g)||[]).length,families.length);
+assert.equal((html.match(/class="candy-chevron"/g)||[]).length,families.length);
 const pokemonCard=html.slice(html.indexOf('フシギダネのアメ'));
 assert.ok(pokemonCard.indexOf('candy-type-tag')<pokemonCard.indexOf('candy-chevron'),
  'Colored candy type must appear immediately before the top-right chevron');
-assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,108);
-assert.equal((html.match(/data-action="candy-quick-rate"/g)||[]).length,108*4);
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,families.length);
+assert.equal((html.match(/data-action="candy-quick-rate"/g)||[]).length,families.length*4);
 assert.ok(html.includes('<article class="candy-item"'),"Candy cards need independent profile and grading buttons");
 assert.ok(!html.includes('class="candy-status"'),"Old grade badge should disappear");
 assert.ok(html.includes('aria-label="フシギダネのアメ：◎（優先投入）に設定"'));
@@ -209,7 +216,7 @@ assert.equal(presses,6);
 state.prefs.candySpecial='all';
 state.prefs.candyKind='mega';
 render({});
-assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,109,
+assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,families.length+1,
  '特殊要素「すべて」 includes both special and non-special candies, including the test-only unknown species');
 state.prefs.candySpecial='any';
 state.prefs.candyKind='all';
@@ -217,4 +224,4 @@ render({});
 assert.equal((html.match(/data-action="candy-detail"/g)||[]).length,
  candy.families.filter(f=>Object.values(f.special).some(x=>x.length)).length,
  '種類「全種類」 includes all families that have some special element only');
-console.log('PASS: 108 colored candy cards, own-type custom picker/filter, saved choice, two distinct special All controls');
+console.log('PASS: dynamic candy family count, new species classification, own-type custom picker/filter, saved choice, two distinct special All controls');

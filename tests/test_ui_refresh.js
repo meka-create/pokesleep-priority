@@ -30,8 +30,8 @@ for(const landscape of ['amber-landscape','greengrass-ex','cyan-ex']){
 }
 assert.ok(css.includes('data-area-panel="7"]{--field-art:url(\'./assets/field-greengrass-ex.jpg\')'));
 assert.ok(css.includes('data-area-panel="8"]{--field-art:url(\'./assets/field-cyan-ex.jpg\')'));
-assert.ok(html.includes('href="./styles.css?v=0.2.12"'),"CSS must be versioned against stale PWA cache");
-assert.ok(html.includes('src="./app.js?v=0.2.12"'),"new app script must bypass stale browser cache");
+assert.ok(html.includes('href="./styles.css?v=0.2.13"'),"CSS must be versioned against stale PWA cache");
+assert.ok(html.includes('src="./app.js?v=0.2.13"'),"new app script must bypass stale browser cache");
 assert.ok(sw.includes("const isDocument=req.mode==='navigate'"),"navigation must bypass stale HTML cache");
 assert.ok(sw.includes("const isCSS=url.pathname.endsWith('/styles.css')"),"CSS must refresh even with installed PWA");
 assert.ok(sw.includes("const isAppScript=url.pathname.endsWith('/app.js')"),"app logic must update online");
@@ -72,6 +72,6 @@ assert.ok(css.includes('.nav-button>span:first-child {font-size:26px;line-height
 assert.ok(css.includes('.nav-candy-icon {display:block;width:26px;height:26px;flex:none}'),'SVG size must match the other tab icon glyphs');
 assert.ok(css.includes('.nav-button.active {color:var(--accent);background:#2b3b49}'),'selected color must be inherited by the SVG');
 assert.ok(css.includes('color:#899db3;font-size:12px;font-weight:750}'),'unselected color must be inherited by the SVG');
-assert.ok(sw.includes("const SHELL_CACHE='gense-note-shell-v0.2.12'"),'refresh installed PWA shell cache');
+assert.ok(sw.includes("const SHELL_CACHE='gense-note-shell-v0.2.13'"),'refresh installed PWA shell cache');
 
 console.log('PASS: compact header; rated counter; clear presets; search placeholders; sleep type colors; 6 normal images + 3 distinct field landscapes; original 54px band; offline precache');

@@ -111,6 +111,23 @@
   const candyMaster=validCandyMaster(cachedCandy)
     &&(!validCandyMaster(candySeed)||Date.parse(cachedCandy.updatedAt)>Date.parse(candySeed.updatedAt))
     ?cachedCandy:candySeed;
+  // Resolve a provisional per-species candy rating once an evolution family is
+  // verified. This must run on the first upgraded PWA startup too: when the
+  // bundled snapshot is already current, a later network refresh may be a no-op.
+  function resolvePendingCandyRatings(choices,families){
+    const updated={...choices},familyByMember=new Map();
+    for(const family of families||[])for(const id of family.members)
+      familyByMember.set(id,String(family.id));
+    for(const [key,value] of Object.entries(updated)){
+      const match=/^pending:(\d+)$/.exec(key);
+      if(!match)continue;
+      const target=familyByMember.get(Number(match[1]));
+      if(!target)continue;
+      if(!CANDY_IDS.has(updated[target]))updated[target]=value;
+      delete updated[key];
+    }
+    return updated;
+  }
   const candyPrefs=fromLocal(KEYS.candy,{});
   const candyRatings={};
   if(candyPrefs&&typeof candyPrefs==='object'&&!Array.isArray(candyPrefs))
@@ -139,6 +156,11 @@
     : SEARCH_GRADE_IDS.filter(g=>g!=='none'||prefs.onlyRated===false);
   const state={master,candyMaster,candyRatings,ratings:fromLocal(KEYS.ratings,{}),overrides:fromLocal(KEYS.overrides,{}),prefs,icons:new Map(),selected:null,selectedCandy:null,status:'',imageBusy:false};
   let dbPromise=null,toastTimer=null,loadingMaster=false;
+  // Migrates already-rated temporary entries even if today's candy master was
+  // bundled before the user's first online check. Persist before changing UI.
+  const initialCandyChoices=resolvePendingCandyRatings(state.candyRatings,state.candyMaster?.families);
+  if(JSON.stringify(initialCandyChoices)!==JSON.stringify(state.candyRatings)
+      &&setLocal(KEYS.candy,initialCandyChoices))state.candyRatings=initialCandyChoices;
   const nowJST=()=>{const parts=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Tokyo',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const get=k=>parts.find(x=>x.type===k)?.value;return `${get('year')}-${get('month')}-${get('day')}`;};
   function toast(message){const el=$('#toast');el.textContent=message;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2600)}
   function save(){setLocal(KEYS.ratings,state.ratings);setLocal(KEYS.overrides,state.overrides);setLocal(KEYS.prefs,state.prefs)}
@@ -976,26 +998,19 @@
     const older=Date.parse(state.candyMaster?.updatedAt||'');
     const newer=Date.parse(incoming.updatedAt||'');
     if(Number.isFinite(older)&&Number.isFinite(newer)&&newer<older)return false;
-    if(JSON.stringify(state.candyMaster?.families)===JSON.stringify(incoming.families))return true;
-    // A new species may have been temporarily shown as "unconfirmed".
-    // Complete its saved-priority migration BEFORE switching the mapping.
-    const priorChoices=state.candyRatings,changed={...priorChoices},migration=new Map();
-    for(const f of incoming.families)for(const id of f.members)migration.set(id,String(f.id));
-    for(const [key,value] of Object.entries(changed)){
-      const match=/^pending:(\d+)$/.exec(key);
-      if(!match)continue;
-      const target=migration.get(Number(match[1]));
-      if(!target)continue;
-      if(!CANDY_IDS.has(changed[target]))changed[target]=value;
-      delete changed[key];
-    }
+    // A newly verified family can replace "pending:<species id>" in the
+    // same snapshot that was already bundled: never skip ratings migration.
+    const priorChoices=state.candyRatings;
+    const changed=resolvePendingCandyRatings(priorChoices,incoming.families);
     const choicesChanged=JSON.stringify(changed)!==JSON.stringify(priorChoices);
+    const familiesChanged=JSON.stringify(state.candyMaster?.families)!==JSON.stringify(incoming.families);
+    if(!choicesChanged&&!familiesChanged)return true;
     if(choicesChanged&&!setLocal(KEYS.candy,changed))return false;
-    if(!setLocal(KEYS.candyMaster,incoming)){
+    if(familiesChanged&&!setLocal(KEYS.candyMaster,incoming)){
       if(choicesChanged)setLocal(KEYS.candy,priorChoices);
       return false;
     }
-    state.candyMaster=incoming;
+    if(familiesChanged)state.candyMaster=incoming;
     if(choicesChanged)state.candyRatings=changed;
     if(state.prefs.tab==='candy')render();
     return true;

@@ -8,6 +8,7 @@ Additional official Misdreavus information: https://www.pokemonsleep.net/news/34
 from __future__ import annotations
 import json
 from pathlib import Path
+from official_fields import OFFICIAL_ENCOUNTERS
 
 ROOT = Path(__file__).resolve().parents[1]
 AREAS = ['ワカクサ本島','シアンの砂浜','トープ洞窟','ウノハナ雪原','ラピスラズリ湖畔','ゴールド旧発電所','アンバー渓谷','ワカクサ本島 EX','シアンの砂浜 EX']
@@ -23,6 +24,10 @@ OVERRIDES = {
 }
 # Oct 26 release: official list for both Misdreavus and Mismagius.
 BASE[200] = BASE[429] = (1<<0)|(1<<3)|(1<<5)|(1<<7)
+# Official 2026-11-16 releases: preserve their confirmed fields in offline
+# rebuilds too, even if the October 2026 source has no entries yet.
+for key, (_, fields) in OFFICIAL_ENCOUNTERS.items():
+    BASE[int(key.split(':')[0])]=sum(1 << island for island in fields)
 # All Pumpkaboo/Gourgeist sizes share the same species appearance locations;
 # source explicitly lists medium-size entries; apply to other sizes only when
 # the regular species is known to be available on the island.
