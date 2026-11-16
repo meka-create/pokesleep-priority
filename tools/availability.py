@@ -4,6 +4,7 @@ from collections import defaultdict
 from embedded_islands import AREAS
 from seed import REGIONAL_SPRITE_IDS, disambiguate_form_name
 from species_policy import included, name_for, normalize_records
+from official_fields import OFFICIAL_ENCOUNTERS
 
 FIELD_KEYS = ('greengrass_isle','cyan_beach','taupe_hollow','snowdrop_tundra',
               'lapis_lakeside','old_gold_power_plant','amber_canyon',
@@ -80,6 +81,10 @@ def master_from_availability(species, translations, entries, previous):
             islands=old['islands']
         name=name_for(key,disambiguate_form_name(form,old.get('name') or labels.get(p['name']) or p['name']))
         sleep=en_sleep.get(p.get('sleepType'),old.get('sleep','不明'))
+        # A new release may be absent or incomplete in the structured source.
+        if key in OFFICIAL_ENCOUNTERS:
+            sleep, confirmed_islands = OFFICIAL_ENCOUNTERS[key]
+            islands=list(confirmed_islands)
         item={'key':key,'id':p['id'],'form':p.get('form') or '',
                     'name':name,'sleep':sleep,'islands':sorted(set(islands))}
         sprite_id=REGIONAL_SPRITE_IDS.get(key,old.get('spriteId'))
