@@ -30,6 +30,17 @@ class IslandSnapshotTests(unittest.TestCase):
         self.assertTrue({0,3,5,7}.issubset(self.by_key['200:default']['islands']))
         self.assertTrue({0,3,5,7}.issubset(self.by_key['429:default']['islands']))
 
+    def test_new_official_fields_when_species_are_released(self):
+        from official_fields import OFFICIAL_ENCOUNTERS
+        first='546:default'
+        second='547:default'
+        self.assertEqual(first in self.by_key,second in self.by_key,
+                         'Cottonee and Whimsicott must arrive together')
+        if first in self.by_key:
+            for key,(sleep,fields) in OFFICIAL_ENCOUNTERS.items():
+                self.assertEqual(self.by_key[key]['sleep'],sleep)
+                self.assertEqual(self.by_key[key]['islands'],list(fields))
+
     def test_forms_do_not_inherit_other_region(self):
         self.assertTrue({3,7}.issubset(self.by_key['37:Alola']['islands']))
         self.assertTrue({0,2,6,7}.issubset(self.by_key['37:default']['islands']))
